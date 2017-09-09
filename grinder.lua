@@ -92,16 +92,6 @@ local function stop_the_machine(pos)
 	end
 end
 
-local function command_reception(pos, topic, payload)
-	if string.match(topic, "start") then
-		return start_the_machine(pos)
-	elseif string.match(topic, "stop") then
-		return stop_the_machine(pos)
-	else
-		return false
-	end
-end
-
 local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
@@ -137,7 +127,7 @@ minetest.register_node("tubelib_addons1:grinder", {
 	end,
 	
 	after_place_node = function(pos, placer)
-		local number = tubelib.add_server_node(pos, "tubelib_addons1:grinder", placer)
+		local number = tubelib.get_node_number(pos, "tubelib_addons1:grinder")
 		local meta = minetest.get_meta(pos)
 		local facedir = minetest.dir_to_facedir(placer:get_look_dir(), false)
 		meta:set_string("number", number)
@@ -162,6 +152,7 @@ minetest.register_node("tubelib_addons1:grinder", {
 		local inv = meta:get_inventory()
 		if inv:is_empty("dst") and inv:is_empty("src") then
 			minetest.node_dig(pos, node, puncher, pointed_thing)
+			tubelib.remove_node(pos)
 		end
 	end,
 
@@ -197,19 +188,6 @@ minetest.register_node("tubelib_addons1:grinder_active", {
 		"tubelib_front.png",
 	},
 
-	on_tubelib_get_items = function(pos)
-		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.get_item(inv, "dst")
-	end,
-
-	on_tubelib_put_items = function(pos, items)
-		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		start_the_machine(pos)
-		return tubelib.put_item(inv, "src", items)
-	end,
-	
 	on_timer = keep_running,
 	
 	allow_metadata_inventory_put = allow_metadata_inventory_put,
@@ -221,19 +199,24 @@ minetest.register_node("tubelib_addons1:grinder_active", {
 	is_ground_content = false,
 })
 
-local function get_items(pos)
-	local meta = minetest.get_meta(pos)
-	local inv = meta:get_inventory()
-	return tubelib.get_item(inv, "dst")
-end
-
-local function put_items(pos, items)
-	start_the_machine(pos)
-	local meta = minetest.get_meta(pos)
-	local inv = meta:get_inventory()
-	return tubelib.put_item(inv, "src", items)
-end
-
-tubelib.register_receive_function("tubelib_addons1:grinder", command_reception)
-tubelib.register_item_functions("tubelib_addons1:grinder", put_items, get_items)	
-tubelib.register_item_functions("tubelib_addons1:grinder_active", put_items, get_items)	
+tubelib.register_node("tubelib_addons1:grinder", {"tubelib_addons1:grinder_active"},
+	{
+	on_pull_item = function(pos)
+		local meta = minetest.get_meta(pos)
+		local inv = meta:get_inventory()
+		return tubelib.get_item(inv, "dst")
+	end,
+	on_push_item = function(pos, item)
+		start_the_machine(pos)
+		local meta = minetest.get_meta(pos)
+		local inv = meta:get_inventory()
+		return tubelib.put_item(inv, "src", item)
+	end,
+	on_recv_message = function(pos, topic, payload)
+		if topic == "start" then
+			start_the_machine(pos)
+		elseif topic == "stop" then
+			stop_the_machine(pos)
+		end
+	end,
+})	

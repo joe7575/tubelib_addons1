@@ -80,16 +80,6 @@ local function stop_the_machine(pos)
 	meta:set_string("infotext", "Tubelib Quarry "..number..": stopped")
 end
 
-local function command_reception(pos, topic, payload)
-	if string.match(topic, "start") then
-		return start_the_machine(pos)
-	elseif string.match(topic, "stop") then
-		return stop_the_machine(pos)
-	else
-		return false
-	end
-end
-
 local QuarrySchedule = {0,0,3,3,3,3,2,2,2,2,1,1,1,1,0,3,0,0,3,3,2,2,1,0,0}
 
 local ValidNodes = {"default:stone", "default:desert_stone", "default:clay", 
@@ -236,7 +226,7 @@ minetest.register_node("tubelib_addons1:quarry", {
 	end,
 	
 	after_place_node = function(pos, placer)
-		local number = tubelib.add_server_node(pos, "tubelib:quarry", placer)
+		local number = tubelib.get_node_number(pos, "tubelib_addons1:quarry")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("infotext", "Quarry "..number..": stopped")
 		local facedir = minetest.dir_to_facedir(placer:get_look_dir(), false)
@@ -257,6 +247,7 @@ minetest.register_node("tubelib_addons1:quarry", {
 		local inv = meta:get_inventory()
 		if inv:is_empty("main") then
 			minetest.node_dig(pos, node, puncher, pointed_thing)
+			tubelib.remove_node(pos)
 		end
 	end,
 
@@ -306,6 +297,18 @@ local function get_items(pos)
 	return tubelib.get_item(inv, "main")
 end
 
-tubelib.register_receive_function("tubelib_addons1:quarry", command_reception)
-tubelib.register_item_functions("tubelib_addons1:quarry", nil, get_items)	
-tubelib.register_item_functions("tubelib_addons1:quarry_active", nil, get_items)	
+tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"},
+	{
+	on_pull_item = function(pos)
+		local meta = minetest.get_meta(pos)
+		local inv = meta:get_inventory()
+		return tubelib.get_item(inv, "main")
+	end,
+	on_recv_message = function(pos, topic, payload)
+		if topic == "start" then
+			start_the_machine(pos)
+		elseif topic == "stop" then
+			stop_the_machine(pos)
+		end
+	end,
+})	
