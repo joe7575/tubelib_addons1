@@ -279,6 +279,9 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 		update_meta(meta, false)
 	end,
 	on_receive_fields = function(pos, formname, fields, sender)
+		if minetest.is_protected(pos, sender:get_player_name()) then
+			return
+		end
 		--if not pipeworks.may_configure(pos, sender) then return end
 		local meta = minetest.get_meta(pos)
 		if fields.running ~= nil then
@@ -309,8 +312,9 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 		tubelib.remove_node(pos)
 	end,
 	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		--if not pipeworks.may_configure(pos, player) then return 0 end
-		--upgrade_autocrafter(pos)
+		if minetest.is_protected(pos, player:get_player_name()) then
+			return 0
+		end
 		local inv = minetest.get_meta(pos):get_inventory()
 		if listname == "recipe" then
 			stack:set_count(1)
@@ -325,10 +329,9 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 		return stack:get_count()
 	end,
 	allow_metadata_inventory_take = function(pos, listname, index, stack, player)
---		if not pipeworks.may_configure(pos, player) then
---			minetest.log("action", string.format("%s attempted to take from autocrafter at %s", player:get_player_name(), minetest.pos_to_string(pos)))
---			return 0
---		end
+		if minetest.is_protected(pos, player:get_player_name()) then
+			return 0
+		end
 --		upgrade_autocrafter(pos)
 		local inv = minetest.get_meta(pos):get_inventory()
 		if listname == "recipe" then
@@ -343,8 +346,9 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 		return stack:get_count()
 	end,
 	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
---		if not pipeworks.may_configure(pos, player) then return 0 end
---		upgrade_autocrafter(pos)
+		if minetest.is_protected(pos, player:get_player_name()) then
+			return 0
+		end
 		local inv = minetest.get_meta(pos):get_inventory()
 		local stack = inv:get_stack(from_list, from_index)
 
