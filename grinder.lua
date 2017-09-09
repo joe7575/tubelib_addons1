@@ -199,8 +199,7 @@ minetest.register_node("tubelib_addons1:grinder_active", {
 	is_ground_content = false,
 })
 
-tubelib.register_node("tubelib_addons1:grinder", {"tubelib_addons1:grinder_active"},
-	{
+tubelib.register_node("tubelib_addons1:grinder", {"tubelib_addons1:grinder_active"}, {
 	on_pull_item = function(pos)
 		local meta = minetest.get_meta(pos)
 		local inv = meta:get_inventory()

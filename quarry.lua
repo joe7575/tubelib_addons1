@@ -211,11 +211,11 @@ minetest.register_node("tubelib_addons1:quarry", {
 	tiles = {
 		-- up, down, right, left, back, front
 		'tubelib_front.png',
-		'tubelib_front.png',
-		'tubelib_front.png',
 		'tubelib_addons1_quarry.png',
-		'tubelib_front.png',
-		'tubelib_front.png',
+		'tubelib_addons1_quarry.png',
+		'tubelib_addons1_quarry_passive.png',
+		'tubelib_addons1_quarry.png',
+		'tubelib_addons1_quarry.png^[transformFX',
 	},
 
 	on_construct = function(pos)
@@ -266,8 +266,8 @@ minetest.register_node("tubelib_addons1:quarry_active", {
 		-- up, down, right, left, back, front
 
 		'tubelib_front.png',
-		'tubelib_front.png',
-		'tubelib_front.png',
+		'tubelib_addons1_quarry.png',
+		'tubelib_addons1_quarry.png',
 		{
 			image = 'tubelib_addons1_quarry_active.png',
 			backface_culling = false,
@@ -278,8 +278,8 @@ minetest.register_node("tubelib_addons1:quarry_active", {
 				length = 2.0,
 			},
 		},
-		'tubelib_front.png',
-		'tubelib_front.png',
+		'tubelib_addons1_quarry.png',
+		'tubelib_addons1_quarry.png^[transformFX',
 	},
 
 	on_receive_fields = on_receive_fields,
@@ -297,8 +297,7 @@ local function get_items(pos)
 	return tubelib.get_item(inv, "main")
 end
 
-tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"},
-	{
+tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"}, {
 	on_pull_item = function(pos)
 		local meta = minetest.get_meta(pos)
 		local inv = meta:get_inventory()
