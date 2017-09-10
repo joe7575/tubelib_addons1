@@ -285,13 +285,11 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 		--if not pipeworks.may_configure(pos, sender) then return end
 		local meta = minetest.get_meta(pos)
 		if fields.running ~= nil then
-			print(fields.running)
 			if fields.running == "false" then
 				update_meta(meta, false)
 				minetest.get_node_timer(pos):stop()
 			else
 				if update_meta(meta, true) then
-					print("started")
 					start_crafter(pos)
 				end
 			end
