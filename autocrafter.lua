@@ -380,14 +380,15 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 	on_timer = run_autocrafter,
 })
 
---minetest.register_craft( {
---	output = "pipeworks:autocrafter 2",
---	recipe = {
---	        { "default:steel_ingot", "default:mese_crystal", "default:steel_ingot" },
---	        { "homedecor:plastic_sheeting", "default:steel_ingot", "homedecor:plastic_sheeting" },
---	        { "default:steel_ingot", "default:mese_crystal", "default:steel_ingot" }
---	},
---})
+minetest.register_craft({
+	output = "tubelib_addons1:autocrafter",
+	recipe = {
+		{"group:wood", 			"default:steel_ingot",  "group:wood"},
+		{"tubelib:tube1", 		"default:mese_crystal",	"tubelib:tube1"},
+		{"default:steel_ingot", "default:steel_ingot",  "default:steel_ingot"},
+	},
+})
+
 
 tubelib.register_node("tubelib_addons1:autocrafter", {}, {
 	on_pull_item = function(pos)

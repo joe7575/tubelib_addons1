@@ -294,11 +294,15 @@ minetest.register_node("tubelib_addons1:quarry_active", {
 	is_ground_content = false,
 })
 
-local function get_items(pos)
-	local meta = minetest.get_meta(pos)
-	local inv = meta:get_inventory()
-	return tubelib.get_item(inv, "main")
-end
+minetest.register_craft({
+	output = "tubelib_addons1:quarry",
+	recipe = {
+		{"group:wood", 			"default:mese_crystal", "group:wood"},
+		{"default:steel_ingot", "default:mese_crystal",	"tubelib:tube1"},
+		{"group:wood", 			"default:mese_crystal", "group:wood"},
+	},
+})
+
 
 tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"}, {
 	on_pull_item = function(pos)
