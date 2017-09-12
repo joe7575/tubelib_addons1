@@ -194,7 +194,7 @@ local function on_receive_fields(pos, formname, fields, player)
 	local running = meta:get_int("running")
 	
 	if fields.number and tonumber(fields.number) then
-		max_levels = tonumber(fields.number)
+		max_levels = math.min(tonumber(fields.number), MAX_LEVELS)
 	end
 	if fields.running then
 		running = fields.running == "true" and 1 or 0
