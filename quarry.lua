@@ -13,17 +13,18 @@
 
 ]]--
 
-LEVELS = 25
+MAX_LEVELS = 25
 CYCLE_TIME = 4
 
 
-local function quarry_formspec(running)
+local function quarry_formspec(running, depth)
 	return "size[8,8]"..
 	default.gui_bg..
 	default.gui_bg_img..
 	default.gui_slots..
-	"checkbox[1,1;running;On;"..dump(running).."]"..
-	"button_exit[1,2;1,1;button;OK]"..
+	"field[1,1;3,1;number;Insert quarry depth (1-25);"..depth.."]" ..
+	"checkbox[1,2;running;On;"..dump(running).."]"..
+	"button_exit[2,2;1,1;button;OK]"..
 	"list[context;main;4,0;3,3;]"..
 	"list[current_player;main;0,4;8,4;]"..
 	"listring[context;main]"..
@@ -82,19 +83,10 @@ end
 
 local QuarrySchedule = {0,0,3,3,3,3,2,2,2,2,1,1,1,1,0,3,0,0,3,3,2,2,1,0,0}
 
-local ValidNodes = {"default:stone", "default:desert_stone", "default:clay", 
-	"default:stone_with_coal", "default:stone_with_iron", 
-	"default:stone_with_copper", "default:stone_with_gold",
-	"default:gravel", "default:stone_with_mese", 
-	"default:stone_with_tin", "default:stone_with_diamond",
-	"default:dirt", "default:dirt_with_grass",
-	"default:dirt_with_grass_footsteps", "default:dirt_with_dry_grass",
-	"default:dirt_with_snow", "default:dirt_with_rainforest_litter",
-	"default:sand", "default:desert_sand", "default:silver_sand",
-	"moreores:mineral_silver"; "moreores:mineral_mithril"}
-
 local ResultNodes = {
+	["default:cobble"] = "default:cobble",
 	["default:stone"] = "default:cobble",
+	["default:mossycobble"] = "default:mossycobble",
 	["default:desert_stone"] = "default:desert_cobble",
 	["default:clay"] = "default:clay_lump",
 	["default:stone_with_coal"] = "default:coal_lump",
@@ -116,7 +108,9 @@ local ResultNodes = {
 	["default:silver_sand"] = "default:silver_sand",
 	["moreores:mineral_silver"] = "moreores:silver_lump",
 	["moreores:mineral_mithril"] = "moreores:mithril_lump",
-	["default:"] = "default:",
+	["stairs:stair_cobble"] = "stairs:stair_cobble",
+	["stairs:stair_mossycobble"] = "stairs:stair_mossycobble",
+	["stairs:stair_desert_cobble"] = "stairs:stair_desert_cobble",
 }
 
 
@@ -130,6 +124,7 @@ local function quarry_next_node(pos, meta)
 	local facedir = meta:get_int("facedir")
 	local owner = meta:get_string("owner")
 	local levels = meta:get_int("levels")
+	local max_levels = meta:get_int("max_levels")
 	local quarry_pos = minetest.string_to_pos(meta:get_string("quarry_pos"))
 	if quarry_pos == nil then
 		quarry_pos = get_pos(pos, facedir, "L")
@@ -138,7 +133,7 @@ local function quarry_next_node(pos, meta)
 	elseif idx < #QuarrySchedule then
 		quarry_pos = get_next_pos(quarry_pos, facedir, QuarrySchedule[idx])
 		idx = idx + 1
-	elseif levels < LEVELS then
+	elseif levels < max_levels then
 		levels = levels + 1
 		local y = quarry_pos.y
 		quarry_pos = get_pos(pos, facedir, "L")
@@ -163,15 +158,13 @@ local function quarry_next_node(pos, meta)
 	end
 
 	local inv = meta:get_inventory()
-	for _,name in ipairs(ValidNodes) do
-		if node.name == name then
-			if inv:room_for_item("main", ItemStack(node.name)) then
-				minetest.remove_node(quarry_pos)
-				inv:add_item("main", ItemStack(ResultNodes[node.name]))
-				return true
-			else
-				return false
-			end
+	if ResultNodes[node.name] ~= nil then
+		if inv:room_for_item("main", ItemStack(node.name)) then
+			minetest.remove_node(quarry_pos)
+			inv:add_item("main", ItemStack(ResultNodes[node.name]))
+			return true
+		else
+			return false
 		end
 	end
 	return true
@@ -195,18 +188,27 @@ local function on_receive_fields(pos, formname, fields, player)
 	if minetest.is_protected(pos, player:get_player_name()) then
 		return
 	end
+	print(dump(fields))
 	local meta = minetest.get_meta(pos)
-	if fields.running ~= nil then
-		meta:set_int("running", fields.running == "true" and 1 or 0)
-		meta:set_string("formspec", quarry_formspec(fields.running == "true"))
+	local max_levels = meta:get_int("max_levels")
+	local running = meta:get_int("running")
+	
+	if fields.number and tonumber(fields.number) then
+		max_levels = tonumber(fields.number)
+	end
+	if fields.running then
+		running = fields.running == "true" and 1 or 0
 	end
 	if fields.button ~= nil then
-		if meta:get_int("running") == 1 then
+		if running == 1 then
 			start_the_machine(pos)
 		else
 			stop_the_machine(pos)
 		end
 	end
+	meta:set_int("running", running)
+	meta:set_int("max_levels", max_levels)
+	meta:set_string("formspec", quarry_formspec(running == 1, max_levels))
 end
 
 minetest.register_node("tubelib_addons1:quarry", {
@@ -223,7 +225,8 @@ minetest.register_node("tubelib_addons1:quarry", {
 
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		meta:set_string("formspec", quarry_formspec(false))
+		meta:set_string("formspec", quarry_formspec(false, MAX_LEVELS))
+		meta:set_int("max_levels", MAX_LEVELS)
 		local inv = meta:get_inventory()
 		inv:set_size('main', 9)
 	end,
@@ -237,7 +240,7 @@ minetest.register_node("tubelib_addons1:quarry", {
 		meta:set_string("number", number)
 		meta:set_string("owner", placer:get_player_name())
 		meta:set_int("running", 0)
-		meta:set_int("levels", 0)
+		meta:set_int("levels", 1)
 	end,
 
 	on_receive_fields = on_receive_fields,
@@ -254,8 +257,8 @@ minetest.register_node("tubelib_addons1:quarry", {
 		end
 	end,
 
-	allow_metadata_inventory_put = allow_metadata_inventory,
-	allow_metadata_inventory_take = allow_metadata_inventory,
+	allow_metadata_inventory_put = allow_metadata_inventory_put,
+	allow_metadata_inventory_take = allow_metadata_inventory_take,
 
 	paramtype2 = "facedir",
 	groups = {cracky=1},
@@ -289,6 +292,9 @@ minetest.register_node("tubelib_addons1:quarry_active", {
 
 	on_timer = keep_running,
 
+	allow_metadata_inventory_put = allow_metadata_inventory_put,
+	allow_metadata_inventory_take = allow_metadata_inventory_take,
+	
 	paramtype2 = "facedir",
 	groups = {crumbly=0, not_in_creative_inventory=1},
 	is_ground_content = false,
