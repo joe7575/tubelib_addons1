@@ -111,6 +111,7 @@ local ResultNodes = {
 	["stairs:stair_cobble"] = "stairs:stair_cobble",
 	["stairs:stair_mossycobble"] = "stairs:stair_mossycobble",
 	["stairs:stair_desert_cobble"] = "stairs:stair_desert_cobble",
+	["default:cactus"] = "default:cactus",
 }
 
 
