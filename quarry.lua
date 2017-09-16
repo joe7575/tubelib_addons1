@@ -8,13 +8,10 @@
 	LGPLv2.1+
 	See LICENSE.txt for more information
 
-	History:
-	2017-09-08  v0.01  first version
-
 ]]--
 
-MAX_LEVELS = 25
-CYCLE_TIME = 4
+local MAX_LEVELS = 25
+local CYCLE_TIME = 4
 
 
 local function quarry_formspec(running, depth)
@@ -189,7 +186,6 @@ local function on_receive_fields(pos, formname, fields, player)
 	if minetest.is_protected(pos, player:get_player_name()) then
 		return
 	end
-	print(dump(fields))
 	local meta = minetest.get_meta(pos)
 	local max_levels = meta:get_int("max_levels")
 	local running = meta:get_int("running")
@@ -312,7 +308,7 @@ minetest.register_craft({
 
 
 tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"}, {
-	on_pull_item = function(pos)
+	on_pull_item = function(pos, side)
 		local meta = minetest.get_meta(pos)
 		local inv = meta:get_inventory()
 		return tubelib.get_item(inv, "main")

@@ -8,9 +8,6 @@
 	LGPLv2.1+
 	See LICENSE.txt for more information
 
-	History:
-	2017-09-08  v0.01  first version
-
 ]]--
 
 local grinder_formspec =
