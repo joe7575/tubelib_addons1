@@ -19,7 +19,8 @@ local function quarry_formspec(running, depth)
 	default.gui_bg..
 	default.gui_bg_img..
 	default.gui_slots..
-	"field[1,1;3,1;number;Insert quarry depth (1-25);"..depth.."]" ..
+	"field[0.5,0.5;3,1;number;Insert quarry depth (1-25);"..depth.."]" ..
+	"label[0.5,1.5;Hint: use 1 for farming mode]"..
 	"checkbox[1,2;running;On;"..dump(running).."]"..
 	"button_exit[2,2;1,1;button;OK]"..
 	"list[context;main;4,0;3,3;]"..
@@ -137,8 +138,16 @@ local function quarry_next_node(pos, meta)
 		quarry_pos = get_pos(pos, facedir, "L")
 		quarry_pos.y = y - 1
 		idx = 1
+	elseif max_levels == 1 then   -- farming mode
+		quarry_pos = get_pos(pos, facedir, "L")
+		quarry_pos.y = quarry_pos.y - 1
+		idx = 1
 	else
+		meta:set_int("levels", 1)
+		meta:set_int("idx", 1)
+		meta:set_string("quarry_pos", nil)
 		stop_the_machine(pos)
+		return false
 	end
 	meta:set_int("levels", levels)
 	meta:set_int("idx", idx)

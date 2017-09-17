@@ -10,8 +10,6 @@
 	LGPLv2.1+
 	See LICENSE.txt for more information
 
-	History:
-	2017-08-26  v0.01  First version
 ]]--
 
 
@@ -115,17 +113,28 @@ local function add_node(pos, block_name, owner)
 	return true
 end
 
-local function remove_copter(pos)
+local function remove_node(pos, block_name, owner)
+	if minetest.is_protected(pos, owner) then
+		return false
+	end
+	if minetest.get_node(pos).name ~= block_name then
+		return false
+	end
 	minetest.remove_node(pos)
+	return true
+end
+
+local function remove_copter(pos, owner)
+	remove_node(pos, "tubelib_addons1:copter", owner)
 	pos.x = pos.x + 1
 	pos.z = pos.z + 1
-	minetest.remove_node(pos)
+	remove_node(pos, "tubelib_addons1:rotor1", owner)
 	pos.z = pos.z - 2
-	minetest.remove_node(pos)
+	remove_node(pos, "tubelib_addons1:rotor2", owner)
 	pos.x = pos.x - 2
-	minetest.remove_node(pos)
+	remove_node(pos, "tubelib_addons1:rotor3", owner)
 	pos.z = pos.z + 2
-	minetest.remove_node(pos)
+	remove_node(pos, "tubelib_addons1:rotor4", owner)
 end
 
 local function add_copter(pos, owner)
@@ -173,8 +182,9 @@ local function stop_the_machine(pos)
 	-- remobe the copter
 	local idx = meta:get_int("idx")
 	local radius = meta:get_int("radius")
+	local owner = meta:get_string("owner")
 	local old_pos = get_next_pos(radius, pos, idx)	
-	remove_copter(old_pos)
+	remove_copter(old_pos, owner)
 	-- update infotext
 	local number = meta:get_string("number")
 	meta:set_string("infotext", "Tubelib Harvester "..number..": stopped")
@@ -229,7 +239,7 @@ local function harvest_next_field(pos, meta, inv)
 	local owner = meta:get_string("owner")
 	-- remove old copter...
 	local old_pos = get_next_pos(radius, pos, idx)
-	remove_copter(old_pos)
+	remove_copter(old_pos, owner)
 	-- ...and place on new pos
 	idx = idx + 1
 	meta:set_int("idx", idx)
@@ -282,7 +292,6 @@ local function on_receive_fields(pos, formname, fields, player)
 	local fs_running = meta:get_int("fs_running")
 	local running = meta:get_int("running")
 	
-	print(dump(fields))
 	if fields.radius ~= nil then
 		radius = tonumber(fields.radius)
 	end
