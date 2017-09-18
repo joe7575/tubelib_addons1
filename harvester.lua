@@ -16,7 +16,6 @@
 local CYCLE_TIME = 4
 local MAX_HEIGHT = 14
 
---local Idx2Radius = {4,6,8,10,12,14,16,18,20}
 local Radius2Idx = {[4]=1 ,[6]=2, [8]=3, [10]=4, [12]=5, [14]=6, [16]=7, [18]=8, [20]=9}
 
 -- valid harvesting nodes and the results for the inventory
@@ -101,18 +100,29 @@ local function allow_metadata_inventory_take(pos, listname, index, stack, player
 	return stack:get_count()
 end
 
+local DeletableNodes = {
+	["air"] = true,
+	["tubelib_addons1:copter"] = true,
+	["tubelib_addons1:rotor1"] = true,
+	["tubelib_addons1:rotor2"] = true,
+	["tubelib_addons1:rotor3"] = true,
+	["tubelib_addons1:rotor4"] = true,
+}	
+
 -- add copter node, considering rights and space
 local function add_node(pos, block_name, owner)
 	if minetest.is_protected(pos, owner) then
 		return false
 	end
-	if minetest.get_node(pos).name ~= "air" then
-		return false
+	if DeletableNodes[minetest.get_node(pos).name] then
+		minetest.remove_node(pos)
+		minetest.add_node(pos, {name=block_name})
+		return true
 	end
-	minetest.add_node(pos, {name=block_name})
-	return true
+	return false
 end
 
+-- remove copter node, considering rights and space
 local function remove_node(pos, block_name, owner)
 	if minetest.is_protected(pos, owner) then
 		return false
@@ -138,25 +148,26 @@ local function remove_copter(pos, owner)
 end
 
 local function add_copter(pos, owner)
-	add_node(pos, "tubelib_addons1:copter", owner)
+	local res = add_node(pos, "tubelib_addons1:copter", owner)
 	pos.x = pos.x + 1
 	pos.z = pos.z + 1
-	add_node(pos, "tubelib_addons1:rotor1", owner)
+	res = res and add_node(pos, "tubelib_addons1:rotor1", owner)
 	pos.z = pos.z - 2
-	add_node(pos, "tubelib_addons1:rotor2", owner)
+	res = res and add_node(pos, "tubelib_addons1:rotor2", owner)
 	pos.x = pos.x - 2
-	add_node(pos, "tubelib_addons1:rotor3", owner)
+	res = res and add_node(pos, "tubelib_addons1:rotor3", owner)
 	pos.z = pos.z + 2
-	add_node(pos, "tubelib_addons1:rotor4", owner)
+	res = res and add_node(pos, "tubelib_addons1:rotor4", owner)
 	pos.z = pos.z - 1 
 	pos.x = pos.x + 1 
+	return res
 end
 
 
--- Calculate the next copter position.
+-- Calculate the copter position.
 -- The copter moves in rows and covers a square area
 -- arround the base block at root_pos.
-local function get_next_pos(radius, root_pos, idx)
+local function calc_copter_pos(radius, root_pos, idx)
 	local x_offs
 	local diameter = radius*2+1
 	idx = idx % (diameter * diameter)
@@ -169,7 +180,20 @@ local function get_next_pos(radius, root_pos, idx)
 	return {x = root_pos.x-radius+x_offs, y = root_pos.y + MAX_HEIGHT, z = root_pos.z-radius+z_offs}
 end
 
+-- call this function on each start or collision
+local function reset_copter_position(pos)
+	local meta = minetest.get_meta(pos)
+	local idx = meta:get_int("idx")
+	local owner = meta:get_string("owner")
+	local radius = meta:get_int("radius")
+	local pos = calc_copter_pos(radius, pos, idx)
+	remove_copter(pos, owner)
+	local diameter = radius*2+1
+	meta:set_int("idx", (diameter*diameter)/2)
+end	
+	
 local function start_the_machine(pos)
+	reset_copter_position(pos)
 	minetest.get_node_timer(pos):start(CYCLE_TIME)
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
@@ -179,20 +203,24 @@ end
 local function stop_the_machine(pos)
 	minetest.get_node_timer(pos):stop()
 	local meta = minetest.get_meta(pos)
-	-- remobe the copter
+	-- remove the copter
 	local idx = meta:get_int("idx")
 	local radius = meta:get_int("radius")
 	local owner = meta:get_string("owner")
-	local old_pos = get_next_pos(radius, pos, idx)	
+	local old_pos = calc_copter_pos(radius, pos, idx)	
 	remove_copter(old_pos, owner)
 	-- update infotext
 	local number = meta:get_string("number")
 	meta:set_string("infotext", "Tubelib Harvester "..number..": stopped")
+	meta:set_int("running", 0)
+	meta:set_int("fs_running", 0)
+	meta:set_string("formspec", formspec(false, radius))
+
 end
 
 -- Remove saplings lying arround
 local function remove_all_sapling_items(pos)
-	for _, object in pairs(minetest.get_objects_inside_radius(pos, 2)) do
+	for _, object in pairs(minetest.get_objects_inside_radius(pos, 3)) do
 		local lua_entity = object:get_luaentity()
 		if not object:is_player() and lua_entity and lua_entity.name == "__builtin:item" then
 			object:remove()
@@ -214,14 +242,22 @@ local function remove_or_replace_node(pos, inv, node)
 		if node.name == "default:papyrus" and next_node.name ~= "default:papyrus" then
 			return true
 		end
-		-- enough space inb the inventory
+		-- enough space in the inventory
 		if inv:room_for_item("main", ItemStack(node.name)) then
 			minetest.remove_node(pos)
 			inv:add_item("main", ItemStack(ResultNodes[node.name]))
-			if ResultNodes[next_node.name] == nil then  -- hit the ground?
+			if ResultNodes[next_node.name] == nil and next_node.name ~= "air" then  -- hit the ground?
 				if SaplingList[node.name] then
 					node.name = SaplingList[node.name]
-					minetest.place_node(pos, node)
+					-- For seed we have to simulate "on_place" and start the timer by hand
+					-- because the after_place_node function checks player rights and can't therefore
+					-- not be used.
+					if node.name == "farming:seed_wheat" or node.name == "farming:seed_cotton" then
+						minetest.set_node(pos, {name=node.name, paramtype2 = "wallmounted", param2=1})
+						minetest.get_node_timer(pos):start(math.random(166, 286))
+					else
+						minetest.place_node(pos, {name=node.name})
+					end
 				end
 			remove_all_sapling_items(pos)
 			end
@@ -233,31 +269,19 @@ local function remove_or_replace_node(pos, inv, node)
 end	
 
 -- Scan the space below the given position
-local function harvest_next_field(pos, meta, inv)
-	local idx = meta:get_int("idx")
-	local radius = meta:get_int("radius")
-	local owner = meta:get_string("owner")
-	-- remove old copter...
-	local old_pos = get_next_pos(radius, pos, idx)
-	remove_copter(old_pos, owner)
-	-- ...and place on new pos
-	idx = idx + 1
-	meta:set_int("idx", idx)
-	local next_pos = get_next_pos(radius, pos, idx)
-	add_copter(next_pos, owner)
-	
-	local y_pos = next_pos.y - 1
+-- Return false if inventory is full
+local function harvest_field(pos, owner, inv)
+	local y_pos = pos.y - 1
 	while true do
-		next_pos.y = y_pos
-		if minetest.is_protected(next_pos, owner) then
+		pos.y = y_pos
+		if minetest.is_protected(pos, owner) then
 			return true
 		end
-		local node = minetest.get_node_or_nil(next_pos)
+		local node = minetest.get_node_or_nil(pos)
 		if node then
 			if node.name ~= "air" then
 				if ResultNodes[node.name] then
-					if not remove_or_replace_node(next_pos, inv, node) then
-						stop_the_machine(pos)
+					if not remove_or_replace_node(pos, inv, node) then
 						return false
 					end
 				else 	
@@ -274,13 +298,26 @@ local function harvest_next_field(pos, meta, inv)
 end
 
 
+-- move the copter and harvest next field
 local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
+	local idx = meta:get_int("idx")
+	local radius = meta:get_int("radius")
+	local owner = meta:get_string("owner")
 	local inv = meta:get_inventory()
-	if not harvest_next_field(pos, meta, inv) then
-		stop_the_machine(pos)
+	-- remove old copter...
+	local old_pos = calc_copter_pos(radius, pos, idx)
+	remove_copter(old_pos, owner)
+	-- ...and place on new pos
+	idx = idx + 1
+	meta:set_int("idx", idx)
+	local next_pos = calc_copter_pos(radius, pos, idx)
+	if not add_copter(next_pos, owner) then
+		reset_copter_position(pos)
+		return meta:get_int("running") == 1
 	end
-	return true
+	local res = harvest_field(next_pos, owner, inv)
+	return meta:get_int("running") == 1 and res
 end
 
 local function on_receive_fields(pos, formname, fields, player)
@@ -294,23 +331,24 @@ local function on_receive_fields(pos, formname, fields, player)
 	
 	if fields.radius ~= nil then
 		radius = tonumber(fields.radius)
+		meta:set_int("radius", radius)
 	end
 
 	if fields.running then
 		fs_running = fields.running == "true" and 1 or 0
+		meta:set_int("fs_running", fs_running)
 	end
 	
 	if fields.button ~= nil then
 		running = fs_running
+		meta:set_int("running", running)
 		if fs_running == 1 then
 			start_the_machine(pos)
 		else
 			stop_the_machine(pos)
 		end
 	end
-	meta:set_int("fs_running", fs_running)
-	meta:set_int("running", running)
-	meta:set_int("radius", radius)
+	
 	if running == 1 then
 		meta:set_string("formspec", formspec_active(fs_running == 1))
 	else
