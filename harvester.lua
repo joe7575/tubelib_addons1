@@ -14,17 +14,17 @@
 
 
 local CYCLE_TIME = 4
-local MAX_HEIGHT = 14
+local MAX_HEIGHT = 18
 
 local Radius2Idx = {[4]=1 ,[6]=2, [8]=3, [10]=4, [12]=5, [14]=6, [16]=7, [18]=8, [20]=9}
 
 -- valid harvesting nodes and the results for the inventory
 local ResultNodes = {
-	["default:tree"] = "default:wood",
-	["default:aspen_tree"] = "default:aspen_wood",
-	["default:pine_tree"] = "default:pine_wood",
-	["default:acacia_tree"] = "default:acacia_wood",
-	["default:jungletree"] = "default:junglewood",
+	["default:tree"] = "default:tree",
+	["default:aspen_tree"] = "default:aspen_tree",
+	["default:pine_tree"] = "default:pine_tree",
+	["default:acacia_tree"] = "default:acacia_tree",
+	["default:jungletree"] = "default:jungletree",
 	
 	["default:leaves"] = "default:leaves",
 	["default:aspen_leaves"] = "default:aspen_leaves",
@@ -40,6 +40,8 @@ local ResultNodes = {
 	
 	["farming:wheat_8"] = "farming:wheat",
 	["farming:cotton_8"] = "farming:cotton",
+	
+	["default:apple"] = "default:apple",
 }
 
 -- Which sapling belongs to which tree
@@ -249,14 +251,15 @@ local function remove_or_replace_node(pos, inv, node)
 			if ResultNodes[next_node.name] == nil and next_node.name ~= "air" then  -- hit the ground?
 				if SaplingList[node.name] then
 					node.name = SaplingList[node.name]
-					-- For seed we have to simulate "on_place" and start the timer by hand
+					-- For seed and saplings we have to simulate "on_place" and start the timer by hand
 					-- because the after_place_node function checks player rights and can't therefore
 					-- not be used.
 					if node.name == "farming:seed_wheat" or node.name == "farming:seed_cotton" then
 						minetest.set_node(pos, {name=node.name, paramtype2 = "wallmounted", param2=1})
 						minetest.get_node_timer(pos):start(math.random(166, 286))
 					else
-						minetest.place_node(pos, {name=node.name})
+						minetest.set_node(pos, {name=node.name})
+						minetest.get_node_timer(pos):start(math.random(2400,4800))
 					end
 				end
 			remove_all_sapling_items(pos)
