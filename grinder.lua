@@ -16,6 +16,9 @@
 
 local TICKS_TO_SLEEP = 10
 local CYCLE_TIME = 2
+local STOP_STATE = 0
+local STANDBY_STATE = -1
+local FAULT_STATE = -2
 
 
 local function formspec(state)
@@ -93,7 +96,7 @@ local function stop_the_machine(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
-	meta:set_int("running", 0)
+	meta:set_int("running", STOP_STATE)
 	meta:set_string("infotext", "Tubelib Grinder "..number..": stopped")
 	meta:set_string("formspec", formspec(tubelib.STOPPED))
 	node.name = "tubelib_addons1:grinder"
@@ -106,7 +109,7 @@ local function goto_sleep(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
-	meta:set_int("running", -1)
+	meta:set_int("running", STANDBY_STATE)
 	meta:set_string("infotext", "Tubelib Grinder "..number..": standby")
 	meta:set_string("formspec", formspec(tubelib.STANDBY))
 	node.name = "tubelib_addons1:grinder"
@@ -119,7 +122,7 @@ local function goto_fault(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
-	meta:set_int("running", -2)
+	meta:set_int("running", FAULT_STATE)
 	meta:set_string("infotext", "Tubelib Grinder "..number..": fault")
 	meta:set_string("formspec", formspec(tubelib.FAULT))
 	node.name = "tubelib_addons1:grinder"
@@ -136,7 +139,7 @@ local function keep_running(pos, elapsed)
 	local busy = convert_stone_to_gravel(inv)
 	
 	if busy == true then 
-		if running <= 0 then
+		if running <= STOP_STATE then
 			return start_the_machine(pos)
 		else
 			running = TICKS_TO_SLEEP
@@ -144,7 +147,7 @@ local function keep_running(pos, elapsed)
 	elseif not inv:is_empty("src") then
 		return goto_fault(pos)
 	else
-		if running <= 0 then
+		if running <= STOP_STATE then
 			return goto_sleep(pos)
 		end
 	end
@@ -159,7 +162,7 @@ local function on_receive_fields(pos, formname, fields, player)
 	local meta = minetest.get_meta(pos)
 	local running = meta:get_int("running") or 1
 	if fields.button ~= nil then
-		if running > 0 then
+		if running > STOP_STATE or running == FAULT_STATE then
 			stop_the_machine(pos)
 		else
 			start_the_machine(pos)
@@ -262,6 +265,10 @@ tubelib.register_node("tubelib_addons1:grinder", {"tubelib_addons1:grinder_activ
 	on_push_item = function(pos, side, item)
 		local meta = minetest.get_meta(pos)
 		return tubelib.put_item(meta, "src", item)
+	end,
+	on_unpull_item = function(pos, side, item)
+		local meta = minetest.get_meta(pos)
+		return tubelib.put_item(meta, "dst", item)
 	end,
 	on_recv_message = function(pos, topic, payload)
 		if topic == "start" then

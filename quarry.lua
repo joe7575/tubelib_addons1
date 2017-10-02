@@ -23,7 +23,6 @@ local CYCLE_TIME = 4
 local BURNING_TIME = 8
 local TICKS_TO_SLEEP = 5
 local STOP_STATE = 0
-local STANDBY_STATE = -1
 local FAULT_STATE = -2
 
 local Depth2Idx = {[1]=1 ,[2]=2, [3]=3, [5]=4, [10]=5, [15]=6, [20]=7, [25]=8}
@@ -37,7 +36,12 @@ local function quarry_formspec(meta, state)
 	local fuel = meta:get_int("fuel") or 0
 	-- some recalculations
 	endless = endless == 1 and "true" or "false"
-	fuel = fuel * 12.5
+	if state == tubelib.RUNNING then
+		fuel = fuel * 100/BURNING_TIME
+	else
+		fuel = 0
+	end
+	
 	return "size[9,8]"..
 	default.gui_bg..
 	default.gui_bg_img..
@@ -109,19 +113,6 @@ local function stop_the_machine(pos)
 	node.name = "tubelib_addons1:quarry"
 	minetest.swap_node(pos, node)
 	minetest.get_node_timer(pos):stop()
-	return false
-end
-
-local function goto_sleep(pos)
-	local meta = minetest.get_meta(pos)
-	local node = minetest.get_node(pos)
-	local number = meta:get_string("number")
-	meta:set_int("running", STANDBY_STATE)
-	meta:set_string("infotext", "Tubelib Quarry "..number..": standby")
-	meta:set_string("formspec", quarry_formspec(meta, tubelib.STANDBY))
-	node.name = "tubelib_addons1:quarry"
-	minetest.swap_node(pos, node)
-	minetest.get_node_timer(pos):start(CYCLE_TIME * TICKS_TO_SLEEP)
 	return false
 end
 
@@ -433,12 +424,15 @@ tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"
 		end
 		return false
 	end,
+	on_unpull_item = function(pos, side, item)
+		local meta = minetest.get_meta(pos)
+		return tubelib.put_item(meta, "main", item)
+	end,
 	
 	on_recv_message = function(pos, topic, payload)
 		if topic == "start" then
 			start_the_machine(pos)
 		elseif topic == "stop" then
-			stop_the_machine(pos)
 			stop_the_machine(pos)
 		elseif topic == "state" then
 			local meta = minetest.get_meta(pos)

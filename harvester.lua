@@ -1,20 +1,31 @@
 --[[
 
-	Tubelib Quadcopter Harvester
-	============================
+	Tubelib Addons 1
+	================
 
-	v0.01 by JoSt
-	
 	Copyright (C) 2017 Joachim Stolberg
 
 	LGPLv2.1+
 	See LICENSE.txt for more information
+	
+	harvester.lua
+	
+	Harvester machine to chop wood and leaves.
+	
+	The machine is able to harvest an square area of up to 41x41 blocks (radius = 20).
+	The base block has to be placed in the middle of the harvesting area.
+	The Harvester processes one block every 4 seconds and needs one item Bio Fuel
+	for 16 blocks.
 
 ]]--
 
 
 local CYCLE_TIME = 4
 local MAX_HEIGHT = 18
+local BURNING_TIME = 16
+local TICKS_TO_SLEEP = 5
+local STOP_STATE = 0
+local FAULT_STATE = -2
 
 local Radius2Idx = {[4]=1 ,[6]=2, [8]=3, [10]=4, [12]=5, [14]=6, [16]=7, [18]=8, [20]=9}
 
@@ -56,30 +67,32 @@ local SaplingList = {
 }
 
 
-local function formspec(running, radius)
-	return "size[8,8]"..
+local function formspec(meta, state)
+	local radius = meta:get_int("radius") or 6
+	local endless = meta:get_int("endless") or 0
+	local fuel = meta:get_int("fuel") or 0
+	-- some recalculations
+	endless = endless == 1 and "true" or "false"
+	if state == tubelib.RUNNING then
+		fuel = fuel * 100/BURNING_TIME
+	else
+		fuel = 0
+	end
+	
+	return "size[9,8]"..
 	default.gui_bg..
 	default.gui_bg_img..
 	default.gui_slots..
-	"label[0.2,0.2;Harvesting Radius]"..
-	"dropdown[0.2,1;2;radius;4,6,8,10,12,14,16,18,20;"..Radius2Idx[radius].."]".. 
-	"checkbox[0.2,2;running;On;"..dump(running).."]"..
-	"button_exit[2,2;1,1;button;OK]"..
-	"list[context;main;4,0;4,4;]"..
-	"list[current_player;main;0,4;8,4;]"..
-	"listring[context;main]"..
-	"listring[current_player;main]"
-end
-
-local function formspec_active(running)
-	return "size[8,8]"..
-	default.gui_bg..
-	default.gui_bg_img..
-	default.gui_slots..
-	"checkbox[0.2,2;running;On;"..dump(running).."]"..
-	"button_exit[2,2;1,1;button;OK]"..
-	"list[context;main;4,0;4,4;]"..
-	"list[current_player;main;0,4;8,4;]"..
+	"dropdown[0,0;1.5;radius;4,6,8,10,12,14,16,18,20;"..Radius2Idx[radius].."]".. 
+	"label[1.6,0.2;Area radius]"..
+	"checkbox[0,1;endless;Run endless;"..endless.."]"..
+	"list[context;main;5,0;4,4;]"..
+	"list[context;fuel;1.5,3;1,1;]"..
+	"item_image[1.5,3;1,1;tubelib_addons1:biofuel]"..
+	"image[2.5,3;1,1;default_furnace_fire_bg.png^[lowpart:"..
+	fuel..":default_furnace_fire_fg.png]"..
+	"image_button[3.5,3;1,1;".. tubelib.state_button(state) ..";button;]"..
+	"list[current_player;main;0.5,4.3;8,4;]"..
 	"listring[context;main]"..
 	"listring[current_player;main]"
 end
@@ -91,6 +104,8 @@ local function allow_metadata_inventory_put(pos, listname, index, stack, player)
 	local meta = minetest.get_meta(pos)
 	local inv = meta:get_inventory()
 	if listname == "main" then
+		return stack:get_count()
+	elseif listname == "fuel" and stack:get_name() == "tubelib_addons1:biofuel" then
 		return stack:get_count()
 	end
 end
@@ -195,29 +210,48 @@ local function reset_copter_position(pos)
 end	
 	
 local function start_the_machine(pos)
-	reset_copter_position(pos)
-	minetest.get_node_timer(pos):start(CYCLE_TIME)
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
+	reset_copter_position(pos)
+	meta:set_int("running", TICKS_TO_SLEEP)
 	meta:set_string("infotext", "Tubelib Harvester "..number..": running")
+	meta:set_string("formspec", formspec(meta, tubelib.RUNNING))
+	minetest.get_node_timer(pos):start(CYCLE_TIME)
+	return false
 end
 
 local function stop_the_machine(pos)
-	minetest.get_node_timer(pos):stop()
 	local meta = minetest.get_meta(pos)
+	local number = meta:get_string("number")
 	-- remove the copter
 	local idx = meta:get_int("idx")
 	local radius = meta:get_int("radius")
-	local owner = meta:get_string("owner")
 	local old_pos = calc_copter_pos(radius, pos, idx)	
+	local owner = meta:get_string("owner")
 	remove_copter(old_pos, owner)
 	-- update infotext
-	local number = meta:get_string("number")
+	meta:set_int("running", STOP_STATE)
 	meta:set_string("infotext", "Tubelib Harvester "..number..": stopped")
-	meta:set_int("running", 0)
-	meta:set_int("fs_running", 0)
-	meta:set_string("formspec", formspec(false, radius))
+	meta:set_string("formspec", formspec(meta, tubelib.STOPPED))
+	minetest.get_node_timer(pos):stop()
+	return false
+end
 
+local function goto_fault(pos)
+	local meta = minetest.get_meta(pos)
+	local number = meta:get_string("number")
+	-- remove the copter
+	local idx = meta:get_int("idx")
+	local radius = meta:get_int("radius")
+	local old_pos = calc_copter_pos(radius, pos, idx)	
+	local owner = meta:get_string("owner")
+	remove_copter(old_pos, owner)
+	-- update infotext
+	meta:set_int("running", FAULT_STATE)
+	meta:set_string("infotext", "Tubelib Harvester "..number..": fault")
+	meta:set_string("formspec", formspec(meta, tubelib.FAULT))
+	minetest.get_node_timer(pos):stop()
+	return false
 end
 
 -- Remove saplings lying arround
@@ -253,7 +287,7 @@ local function remove_or_replace_node(pos, inv, node)
 					node.name = SaplingList[node.name]
 					-- For seed and saplings we have to simulate "on_place" and start the timer by hand
 					-- because the after_place_node function checks player rights and can't therefore
-					-- not be used.
+					-- be used.
 					if node.name == "farming:seed_wheat" or node.name == "farming:seed_cotton" then
 						minetest.set_node(pos, {name=node.name, paramtype2 = "wallmounted", param2=1})
 						minetest.get_node_timer(pos):start(math.random(166, 286))
@@ -304,10 +338,24 @@ end
 -- move the copter and harvest next field
 local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
+	local running = meta:get_int("running") - 1
 	local idx = meta:get_int("idx")
 	local radius = meta:get_int("radius")
 	local owner = meta:get_string("owner")
 	local inv = meta:get_inventory()
+	local fuel = meta:get_int("fuel") or 0
+	
+	-- check fuel
+	if fuel <= 0 then
+		if tubelib.get_this_item(meta, "fuel", 1) == nil then
+			return goto_fault(pos)
+		end
+		fuel = BURNING_TIME
+	else
+		fuel = fuel - 1
+	end
+	meta:set_int("fuel", fuel) 
+	
 	-- remove old copter...
 	local old_pos = calc_copter_pos(radius, pos, idx)
 	remove_copter(old_pos, owner)
@@ -316,11 +364,26 @@ local function keep_running(pos, elapsed)
 	meta:set_int("idx", idx)
 	local next_pos = calc_copter_pos(radius, pos, idx)
 	if not add_copter(next_pos, owner) then
-		reset_copter_position(pos)
-		return meta:get_int("running") == 1
+		return goto_fault(pos)
 	end
-	local res = harvest_field(next_pos, owner, inv)
-	return meta:get_int("running") == 1 and res
+	
+	local busy = harvest_field(next_pos, owner, inv)
+	if busy == true then 
+		if running <= STOP_STATE then
+			return start_the_machine(pos)
+		else
+			running = TICKS_TO_SLEEP
+		end
+	else
+		return goto_fault(pos)
+	end
+	meta:set_int("running", running)
+	meta:set_string("formspec", formspec(meta, tubelib.RUNNING))
+	meta:set_string("infotext", "Tubelib Harvester "..
+		meta:get_string("number")..
+		": running "..
+		minetest.pos_to_string(next_pos))
+	return true
 end
 
 local function on_receive_fields(pos, formname, fields, player)
@@ -328,34 +391,31 @@ local function on_receive_fields(pos, formname, fields, player)
 		return
 	end
 	local meta = minetest.get_meta(pos)
-	local radius = meta:get_int("radius")
-	local fs_running = meta:get_int("fs_running")
-	local running = meta:get_int("running")
 	
+	local radius = meta:get_int("radius") or 6
 	if fields.radius ~= nil then
 		radius = tonumber(fields.radius)
+	end
+	if radius ~= meta:get_int("radius") then
+		stop_the_machine(pos)
 		meta:set_int("radius", radius)
 	end
 
-	if fields.running then
-		fs_running = fields.running == "true" and 1 or 0
-		meta:set_int("fs_running", fs_running)
+	local endless = meta:get_int("endless") or 0
+	if fields.endless ~= nil then
+		endless = fields.endless == "true" and 1 or 0
 	end
+	meta:set_int("endless", endless)
 	
+	local running = meta:get_int("running") or STOP_STATE
 	if fields.button ~= nil then
-		running = fs_running
-		meta:set_int("running", running)
-		if fs_running == 1 then
-			start_the_machine(pos)
-		else
+		if running > STOP_STATE or running == FAULT_STATE then
 			stop_the_machine(pos)
+		else
+			start_the_machine(pos)
 		end
-	end
-	
-	if running == 1 then
-		meta:set_string("formspec", formspec_active(fs_running == 1))
 	else
-		meta:set_string("formspec", formspec(fs_running == 1, radius))
+		meta:set_string("formspec", formspec(meta, tubelib.state(running)))
 	end
 end
 
@@ -369,10 +429,9 @@ minetest.register_node("tubelib_addons1:harvester_base", {
 
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		meta:set_int("radius", 6)
-		meta:set_string("formspec", formspec(false, 6))
 		local inv = meta:get_inventory()
 		inv:set_size('main', 16)
+		inv:set_size('fuel', 1)
 	end,
 	
 	after_place_node = function(pos, placer)
@@ -381,8 +440,10 @@ minetest.register_node("tubelib_addons1:harvester_base", {
 		meta:set_string("infotext", "Tubelib Harvester "..number..": stopped")
 		meta:set_string("number", number)
 		meta:set_string("owner", placer:get_player_name())
-		meta:set_int("fs_running", 0)
-		meta:set_int("running", 0)
+		meta:set_int("running", STOP_STATE)
+		meta:set_int("endless", 0)
+		meta:set_int("radius", 6)
+		meta:set_string("formspec", formspec(meta, tubelib.STOPPED))
 	end,
 
 	on_dig = function(pos, node, puncher, pointed_thing)
@@ -550,14 +611,23 @@ minetest.register_craft({
 tubelib.register_node("tubelib_addons1:harvester_base", {}, {
 	on_pull_item = function(pos, side)
 		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.get_item(inv, "main")
+		return tubelib.get_item(meta, "main")
+	end,
+	on_unpull_item = function(pos, side, item)
+		local meta = minetest.get_meta(pos)
+		return tubelib.put_item(meta, "main", item)
 	end,
 	on_recv_message = function(pos, topic, payload)
 		if topic == "start" then
 			start_the_machine(pos)
 		elseif topic == "stop" then
 			stop_the_machine(pos)
+		elseif topic == "state" then
+			local meta = minetest.get_meta(pos)
+			local running = meta:get_int("running")
+			return tubelib.statestring(running)
+		else
+			return "unsupported"
 		end
 	end,
 })	

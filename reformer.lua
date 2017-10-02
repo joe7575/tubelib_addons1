@@ -11,21 +11,28 @@
 ]]--
 
 local CYCLE_TIME = 6
+local TICKS_TO_SLEEP = 5
+local STOP_STATE = 0
+local STANDBY_STATE = -1
+local FAULT_STATE = -2
 
-local formspec =
-	"size[8,8]"..
+local function formspec(state)
+	return "size[8,8]"..
 	default.gui_bg..
 	default.gui_bg_img..
 	default.gui_slots..
 	"list[context;src;0,0;3,3;]"..
-	"image[3.5,1;1,1;gui_furnace_arrow_bg.png^[transformR270]"..
+	"item_image[0,0;1,1;tubelib_addons1:biogas]"..
+	"image[3.5,1;1,1;tubelib_gui_arrow.png]"..
+	"image_button[3.5,3;1,1;".. tubelib.state_button(state) ..";button;]"..
 	"list[context;dst;5,0;3,3;]"..
-	"list[current_player;main;0,4;8,4;]"..
-  "listring[context;dst]"..
-  "listring[current_player;main]"..
-  "listring[context;src]"..
-  "listring[current_player;main]"
-
+	"item_image[5,0;1,1;tubelib_addons1:biofuel]"..
+	"list[current_player;main;0,4.3;8,4;]"..
+	"listring[context;dst]"..
+	"listring[current_player;main]"..
+	"listring[context;src]"..
+	"listring[current_player;main]"
+end
 
 local function allow_metadata_inventory_put(pos, listname, index, stack, player)
 	if minetest.is_protected(pos, player:get_player_name()) then
@@ -68,71 +75,94 @@ local function place_top(pos, facedir, placer)
 	return true
 end
 
-local function convert_biogas_to_biofuel(inv)
+local function convert_biogas_to_biofuel(meta)
+	local inv = meta:get_inventory()
 	local biofuel = ItemStack("tubelib_addons1:biofuel")
-	if inv:room_for_item("dst", biofuel) and tubelib.get_num_items(inv, "src", 4) then
+	local items = tubelib.get_num_items(meta, "src", 4)
+	if inv:room_for_item("dst", biofuel) and items and 
+					items:get_name() == "tubelib_addons1:biogas" then
 		inv:add_item("dst", biofuel)
 		return true
+	else
+		inv:add_item("src", items)
+		return false  -- error
 	end
-	return false
 end
 
 local function start_the_machine(pos)
 	local meta = minetest.get_meta(pos)
-	if meta:get_int("running") == 0 then
-		meta:set_int("running", 1)
-		local number = meta:get_string("number")
-		minetest.get_node_timer(pos):start(CYCLE_TIME)
-		meta:set_string("infotext", "Tubelib Reformer "..number..": running")
-	end
+	local number = meta:get_string("number")
+	meta:set_int("running", TICKS_TO_SLEEP)
+	meta:set_string("infotext", "Tubelib Reformer "..number..": running")
+	meta:set_string("formspec", formspec(tubelib.RUNNING))
+	minetest.get_node_timer(pos):start(CYCLE_TIME)
+	return false
 end
 
 local function stop_the_machine(pos)
 	local meta = minetest.get_meta(pos)
-	if meta:get_int("running") == 1 then
-		meta:set_int("running", 0)
-		local number = meta:get_string("number")
-		minetest.get_node_timer(pos):stop()
-		meta:set_string("infotext", "Tubelib Reformer "..number..": stopped")
-	end
+	local number = meta:get_string("number")
+	meta:set_int("running", STOP_STATE)
+	minetest.get_node_timer(pos):stop()
+	meta:set_string("infotext", "Tubelib Reformer "..number..": stopped")
+	meta:set_string("formspec", formspec(tubelib.STOPPED))
+	return false
 end
 
-local function signal_standby(pos)
+local function goto_sleep(pos)
 	local meta = minetest.get_meta(pos)
-	if meta:get_int("state") == tubelib.RUNNING then
-		meta:set_int("state", tubelib.STANDBY)
-		local number = meta:get_string("number")
-		meta:set_string("infotext", "Tubelib Distributor "..number..": standby")
-		local filter = minetest.deserialize(meta:get_string("filter"))
-		meta:set_string("formspec", distributor_formspec(tubelib.STANDBY, filter))
-	end
+	local number = meta:get_string("number")
+	meta:set_int("running", STOP_STATE)
+	minetest.get_node_timer(pos):start(CYCLE_TIME * TICKS_TO_SLEEP)
+	meta:set_string("infotext", "Tubelib Reformer "..number..": standby")
+	meta:set_string("formspec", formspec(tubelib.STANDBY))
+	return false
 end
 
-local function signal_error(pos)
+local function goto_fault(pos)
 	local meta = minetest.get_meta(pos)
-	if meta:get_int("state") ~= tubelib.ERROR then
-		meta:set_int("state", tubelib.ERROR)
-		local number = meta:get_string("number")
-		meta:set_string("infotext", "Tubelib Distributor "..number..": error")
-		local filter = minetest.deserialize(meta:get_string("filter"))
-		meta:set_string("formspec", distributor_formspec(tubelib.ERROR, filter))
-	end
+	local number = meta:get_string("number")
+	meta:set_int("running", FAULT_STATE)
+	minetest.get_node_timer(pos):stop()
+	meta:set_string("infotext", "Tubelib Reformer "..number..": fault")
+	meta:set_string("formspec", formspec(tubelib.FAULT))
+	return false
 end
-
 
 local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
-	local number = meta:get_string("number")
-	local inv = meta:get_inventory()
-	if convert_biogas_to_biofuel(inv) == true then
-		meta:set_string("infotext", "Tubelib Reformer "..number..": running")
-	elseif not inv:is_empty("src") then
-		meta:set_string("infotext", "Tubelib Reformer "..number..": blocked")
+	local running = meta:get_int("running") - 1
+	local res = convert_biogas_to_biofuel(meta)
+	
+	if res == true then 
+		if running <= STOP_STATE then
+			return start_the_machine(pos)
+		else
+			running = TICKS_TO_SLEEP
+		end
 	else
-		stop_the_machine(pos)
+		return goto_fault(pos)
 	end
-	return meta:get_int("running") == 1
+	meta:set_int("running", running)
+	meta:set_string("formspec", formspec(tubelib.RUNNING))
+	return true
 end
+
+local function on_receive_fields(pos, formname, fields, player)
+	if minetest.is_protected(pos, player:get_player_name()) then
+		return
+	end
+	local meta = minetest.get_meta(pos)
+	local running = meta:get_int("running") or STOP_STATE
+	if fields.button ~= nil then
+		if running > STOP_STATE or running == FAULT_STATE then
+			stop_the_machine(pos)
+		else
+			start_the_machine(pos)
+		end
+	end
+end
+
 
 minetest.register_node("tubelib_addons1:reformer", {
 	description = "Tubelib Reformer",
@@ -154,7 +184,6 @@ minetest.register_node("tubelib_addons1:reformer", {
 	
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		meta:set_string("formspec", formspec)
 		local inv = meta:get_inventory()
 		inv:set_size('src', 9)
 		inv:set_size('dst', 9)
@@ -166,24 +195,12 @@ minetest.register_node("tubelib_addons1:reformer", {
 			minetest.remove_node(pos)
 			return
 		end
-		local number = tubelib.get_node_number(pos, "tubelib_addons1:reformer")
+		local number = tubelib.add_node(pos, "tubelib_addons1:reformer")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("number", number)
-		meta:set_int("running", 0)
-		meta:set_int("facedir", facedir)
+		meta:set_int("running", STOP_STATE)
 		meta:set_string("infotext", "Tubelib Reformer "..number..": stopped")
-	end,
-
-	on_metadata_inventory_put = function(pos)
-		start_the_machine(pos)
-	end,
-	
-	on_metadata_inventory_move = function(pos)
-		start_the_machine(pos)
-	end,
-	
-	on_metadata_inventory_take = function(pos)
-		start_the_machine(pos)
+		meta:set_string("formspec", formspec(tubelib.STOPPED))
 	end,
 
 	on_dig = function(pos, node, puncher, pointed_thing)
@@ -191,13 +208,13 @@ minetest.register_node("tubelib_addons1:reformer", {
 		local inv = meta:get_inventory()
 		if inv:is_empty("dst") and inv:is_empty("src") then
 			minetest.node_dig(pos, node, puncher, pointed_thing)
-			minetest.node_dig({x=pos.x, y=pos.y+1, z=pos.z}, node, puncher, pointed_thing)
+			minetest.remove_node({x=pos.x, y=pos.y+1, z=pos.z})
 			tubelib.remove_node(pos)
 		end
 	end,
 	
 	on_timer = keep_running,
-
+	on_receive_fields = on_receive_fields,
 	allow_metadata_inventory_put = allow_metadata_inventory_put,
 	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
@@ -242,21 +259,29 @@ minetest.register_craft({
 
 
 tubelib.register_node("tubelib_addons1:reformer", {}, {
-	on_pull_item = function(pos)
+	on_pull_item = function(pos, side)
 		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.get_item(inv, "dst")
+		return tubelib.get_item(meta, "dst")
 	end,
-	on_push_item = function(pos, item)
+	on_push_item = function(pos, side, item)
 		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.put_item(inv, "src", item)
+		return tubelib.put_item(meta, "src", item)
+	end,
+	on_unpull_item = function(pos, side, item)
+		local meta = minetest.get_meta(pos)
+		return tubelib.put_item(meta, "dst", item)
 	end,
 	on_recv_message = function(pos, topic, payload)
 		if topic == "start" then
 			start_the_machine(pos)
 		elseif topic == "stop" then
 			stop_the_machine(pos)
+		elseif topic == "state" then
+			local meta = minetest.get_meta(pos)
+			local running = meta:get_int("running")
+			return tubelib.statestring(running)
+		else
+			return "unsupported"
 		end
 	end,
 })	

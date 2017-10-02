@@ -449,6 +449,6 @@ tubelib.register_node("tubelib_addons1:autocrafter", {"tubelib_addons1:autocraft
 	end,
 	on_unpull_item = function(pos, side, item)
 		local meta = minetest.get_meta(pos)
-		return tubelib.put_item(meta, "src", item)
+		return tubelib.put_item(meta, "dst", item)
 	end,
 })	
