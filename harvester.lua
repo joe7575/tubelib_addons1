@@ -376,7 +376,7 @@ minetest.register_node("tubelib_addons1:harvester_base", {
 	end,
 	
 	after_place_node = function(pos, placer)
-		local number = tubelib.get_node_number(pos, "tubelib_addons1:harvester_base")
+		local number = tubelib.add_node(pos, "tubelib_addons1:harvester_base")
 		local meta = minetest.get_meta(pos)
 		meta:set_string("infotext", "Tubelib Harvester "..number..": stopped")
 		meta:set_string("number", number)

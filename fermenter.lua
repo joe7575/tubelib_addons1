@@ -28,9 +28,11 @@ local formspec =
 	default.gui_bg_img..
 	default.gui_slots..
 	"list[context;src;0,0;3,3;]"..
+	"item_image[0,0;1,1;default:leaves]"..
 	"image[3.5,1;1,1;gui_furnace_arrow_bg.png^[transformR270]"..
 	"list[context;dst;5,0;3,3;]"..
-	"list[current_player;main;0,4;8,4;]"..
+	"item_image[5,0;1,1;tubelib_addons1:biogas]"..
+	"list[current_player;main;1,4.3;8,4;]"..
   "listring[context;dst]"..
   "listring[current_player;main]"..
   "listring[context;src]"..
@@ -179,7 +181,7 @@ minetest.register_node("tubelib_addons1:fermenter", {
 		local inv = meta:get_inventory()
 		if inv:is_empty("dst") and inv:is_empty("src") then
 			minetest.node_dig(pos, node, puncher, pointed_thing)
-			minetest.node_dig({x=pos.x, y=pos.y+1, z=pos.z}, node, puncher, pointed_thing)
+			minetest.remove_node({x=pos.x, y=pos.y+1, z=pos.z})
 			tubelib.remove_node(pos)
 		end
 	end,

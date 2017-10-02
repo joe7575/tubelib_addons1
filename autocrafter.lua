@@ -1,6 +1,26 @@
+--[[
+
+	Tubelib Addons
+	==============
+
+	Copyright (C) 2017 Joachim Stolberg
+
+	LGPLv2.1+
+	See LICENSE.txt for more information
+
+	The autocrafter is derived from pipeworks: 
+	Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>  WTFPL
+
+	autocrafter.lua:
+	
+]]--
+
+
 local autocrafterCache = {}  -- caches some recipe data to avoid to call the slow function minetest.get_craft_result() every second
 
-local craft_time = 1
+local SLEEP_CNT_START_VAL = 10
+
+local craft_time = 2
 
 local function count_index(invlist)
 	local index = {}
@@ -59,39 +79,96 @@ local function autocraft(inventory, craft)
 	return true
 end
 
--- returns false to stop the timer, true to continue running
--- is started only from start_autocrafter(pos) after sanity checks and cached recipe
-local function run_autocrafter(pos, elapsed)
-	local meta = minetest.get_meta(pos)
-	local inventory = meta:get_inventory()
-	local craft = get_craft(pos, inventory)
-	local output_item = craft.output.item
-	-- only use crafts that have an actual result
-	if output_item:is_empty() then
-		local number = meta:get_string("number")
-		meta:set_string("infotext", "unconfigured Autocrafter "..number..": unknown recipe")
-		return false
-	end
-
-	for step = 1, math.floor(elapsed/craft_time) do
-		local continue = autocraft(inventory, craft)
-		if not continue then return false end
-	end
-	return true
+local function formspec(state)
+	return "size[8,9.2]"..		-- 9.2 is the max. for mobile devices
+		"list[context;recipe;0,0;3,3;]"..
+		"image[2.8,1;1,1;tubelib_gui_arrow.png]"..
+		"list[context;output;3.5,1;1,1;]"..
+		"image_button[3.5,2;1,1;".. tubelib.state_button(state) ..";button;]"..
+		"list[context;src;0,3.2;8,2;]"..
+		"list[context;dst;5,0;3,3;]"..
+		default.gui_bg..
+		default.gui_bg_img..
+		default.gui_slots..
+		"list[current_player;main;0,5.4;8,4;]" ..
+		"listring[current_player;main]"..
+		"listring[context;src]" ..
+		"listring[current_player;main]"..
+		"listring[context;dst]" ..
+		"listring[current_player;main]"
 end
 
 local function start_crafter(pos)
 	local meta = minetest.get_meta(pos)
-	if meta:get_int("enabled") == 1 then
-		local timer = minetest.get_node_timer(pos)
-		if not timer:is_started() then
-			timer:start(craft_time)
-		end
+	local node = minetest.get_node(pos)
+	meta:set_int("running", SLEEP_CNT_START_VAL)
+	meta:set_string("formspec",formspec(tubelib.RUNNING))
+	node.name = "tubelib_addons1:autocrafter_active"
+	minetest.swap_node(pos, node)
+	local timer = minetest.get_node_timer(pos)
+	if not timer:is_started() then
+		timer:start(craft_time)
 	end
+	return false
 end
 
-local function after_inventory_change(pos)
-	start_crafter(pos)
+local function stop_crafter(pos)
+	local node = minetest.get_node(pos)
+	local meta = minetest.get_meta(pos)
+	meta:set_int("running", 0)
+	meta:set_string("formspec",formspec(tubelib.STOPPED))
+	node.name = "tubelib_addons1:autocrafter"
+	minetest.swap_node(pos, node)
+	minetest.get_node_timer(pos):stop()
+	return false
+end
+
+local function goto_sleep(pos)
+	local node = minetest.get_node(pos)
+	local meta = minetest.get_meta(pos)
+	local number = meta:get_string("number")
+	meta:set_int("running", -1)
+	meta:set_string("formspec",formspec(tubelib.STANDBY))
+	meta:set_string("infotext", "unconfigured Autocrafter "..number..": unknown recipe")
+	node.name = "tubelib_addons1:autocrafter"
+	minetest.swap_node(pos, node)
+	minetest.get_node_timer(pos):start(craft_time*SLEEP_CNT_START_VAL)
+	return false
+end
+
+-- returns false to stop the timer, true to continue running
+-- is started only from start_autocrafter(pos) after sanity checks and cached recipe
+local function run_autocrafter(pos, elapsed)
+	local meta = minetest.get_meta(pos)
+	local running = meta:get_int("running") - 1
+	local inventory = meta:get_inventory()
+	local craft = get_craft(pos, inventory)
+	local output_item = craft.output.item
+	
+	-- only use crafts that have an actual result
+	if output_item:is_empty() then
+		if running <= 0 then
+			return goto_sleep(pos)
+		end
+		meta:set_int("running", running)
+		return true
+	end
+
+	if not autocraft(inventory, craft) then
+		if running <= 0 then
+			return goto_sleep(pos)
+		end
+		meta:set_int("running", running)
+		return true
+	end
+	
+	if running <= 0 then
+		return start_crafter(pos)
+	else
+		running = SLEEP_CNT_START_VAL
+	end
+	meta:set_int("running", running)
+	return true
 end
 
 -- note, that this function assumes allready being updated to virtual items
@@ -131,8 +208,6 @@ local function after_recipe_change(pos, inventory)
 	local number = meta:get_string("number")
 	meta:set_string("infotext", string.format("'%s' Autocrafter "..number.."(%s)", description, name))
 	inventory:set_stack("output", 1, output_item)
-
-	after_inventory_change(pos)
 end
 
 -- clean out unknown items and groups, which would be handled like unknown items in the crafting grid
@@ -171,210 +246,185 @@ local function on_output_change(pos, inventory, stack)
 	after_recipe_change(pos, inventory)
 end
 
--- returns false if we shouldn't bother attempting to start the timer again after this
-local function update_meta(meta, enabled)
-	meta:set_int("enabled", enabled and 1 or 0)
-	local fs = 	"size[8,12]"..
-			"list[context;recipe;0,0;3,3;]"..
-			"image[3,1;1,1;gui_hb_bg.png^[colorize:#141318:255]"..
-			"list[context;output;3,1;1,1;]"..
-			--"image_button[3,2;1,0.6;pipeworks_button_" .. state .. ".png;" .. state .. ";;;false;pipeworks_button_interm.png]" ..
-			"checkbox[3,2;running;On;"..dump(enabled).."]"..
-			"list[context;src;0,4.5;8,3;]"..
-			"list[context;dst;4,0;4,3;]"..
-			default.gui_bg..
-			default.gui_bg_img..
-			default.gui_slots..
-			default.get_hotbar_bg(0,8) ..
-			"list[current_player;main;0,8;8,4;]" ..
-			"listring[current_player;main]"..
-			"listring[context;src]" ..
-			"listring[current_player;main]"..
-			"listring[context;dst]" ..
-			"listring[current_player;main]"
-	meta:set_string("formspec",fs)
 
+local function allow_metadata_inventory_put(pos, listname, index, stack, player)
+	if minetest.is_protected(pos, player:get_player_name()) then
+		return 0
+	end
+	local inv = minetest.get_meta(pos):get_inventory()
+	if listname == "recipe" then
+		stack:set_count(1)
+		inv:set_stack(listname, index, stack)
+		after_recipe_change(pos, inv)
+		return 0
+	elseif listname == "output" then
+		on_output_change(pos, inv, stack)
+		return 0
+	end
+	return stack:get_count()
+end
+
+local function allow_metadata_inventory_take(pos, listname, index, stack, player)
+	if minetest.is_protected(pos, player:get_player_name()) then
+		return 0
+	end
+--		upgrade_autocrafter(pos)
+	local inv = minetest.get_meta(pos):get_inventory()
+	if listname == "recipe" then
+		inv:set_stack(listname, index, ItemStack(""))
+		after_recipe_change(pos, inv)
+		return 0
+	elseif listname == "output" then
+		on_output_change(pos, inv, nil)
+		return 0
+	end
+	return stack:get_count()
+end
+
+local function allow_metadata_inventory_move(pos, from_list, from_index, to_list, to_index, count, player)
+	if minetest.is_protected(pos, player:get_player_name()) then
+		return 0
+	end
+	local inv = minetest.get_meta(pos):get_inventory()
+	local stack = inv:get_stack(from_list, from_index)
+
+	if to_list == "output" then
+		on_output_change(pos, inv, stack)
+		return 0
+	elseif from_list == "output" then
+		on_output_change(pos, inv, nil)
+		if to_list ~= "recipe" then
+			return 0
+		end -- else fall through to recipe list handling
+	end
+
+	if from_list == "recipe" or to_list == "recipe" then
+		if from_list == "recipe" then
+			inv:set_stack(from_list, from_index, ItemStack(""))
+		end
+		if to_list == "recipe" then
+			stack:set_count(1)
+			inv:set_stack(to_list, to_index, stack)
+		end
+		after_recipe_change(pos, inv)
+		return 0
+	end
+
+	return count
+end
+
+
+
+-- returns false if we shouldn't bother attempting to start the timer again after this
+local function update_meta(meta, state)
 	-- toggling the button doesn't quite call for running a recipe change check
 	-- so instead we run a minimal version for infotext setting only
 	-- this might be more written code, but actually executes less
+	local number = meta:get_string("number")
 	local output = meta:get_inventory():get_stack("output", 1)
 	if output:is_empty() then -- doesn't matter if paused or not
-		local number = meta:get_string("number")
 		meta:set_string("infotext", "unconfigured Autocrafter "..number)
+		meta:set_string("formspec",formspec(tubelib.STOPPED))
 		return false
-	end
-
+	end	
+	
+	local infotext
 	local description, name = get_item_info(output)
-	local number = meta:get_string("number")
-	local infotext = enabled and string.format("'%s' Autocrafter %s (%s)", description, number, name)
-				or string.format("paused '%s' Autocrafter %s", description, number)
-
+	if state == tubelib.RUNNING then
+		infotext = string.format("'%s' Autocrafter %s (%s)", description, number, name)
+	else
+		infotext = string.format("stopped '%s' Autocrafter %s", description, number)
+	end
 	meta:set_string("infotext", infotext)
-	return enabled
+	meta:set_string("formspec",formspec(state))
+	return state == tubelib.RUNNING
 end
 
----- 1st version of the autocrafter had actual items in the crafting grid
----- the 2nd replaced these with virtual items, dropped the content on update and set "virtual_items" to string "1"
----- the third added an output inventory, changed the formspec and added a button for enabling/disabling
----- so we work out way backwards on this history and update each single case to the newest version
---local function upgrade_autocrafter(pos, meta)
---	local meta = meta or minetest.get_meta(pos)
---	local inv = meta:get_inventory()
+local function on_receive_fields(pos, formname, fields, sender)
+	if minetest.is_protected(pos, sender:get_player_name()) then
+		return
+	end
+	local meta = minetest.get_meta(pos)
+	local running = meta:get_int("running")
+	if fields.button ~= nil then
+		if running > 0 then
+			update_meta(meta, tubelib.STOPPED)
+			stop_crafter(pos)
+			meta:set_int("running", 0)
+		else
+			if update_meta(meta, tubelib.RUNNING) then
+				meta:set_int("running", 1)
+				start_crafter(pos)
+			else
+				stop_crafter(pos)
+				meta:set_int("running", 0)
+			end
+		end
+	end
+end
 
---	if inv:get_size("output") == 0 then -- we are version 2 or 1
---		inv:set_size("output", 1)
---		-- migrate the old autocrafters into an "enabled" state
---		update_meta(meta, true)
-
---		if meta:get_string("virtual_items") == "1" then -- we are version 2
---			-- we allready dropped stuff, so lets remove the metadatasetting (we are not being called again for this node)
---			meta:set_string("virtual_items", "")
---		else -- we are version 1
---			local recipe = inv:get_list("recipe")
---			if not recipe then return end
---			for idx, stack in ipairs(recipe) do
---				if not stack:is_empty() then
---					minetest.add_item(pos, stack)
---					stack:set_count(1)
---					stack:set_wear(0)
---					inv:set_stack("recipe", idx, stack)
---				end
---			end
---		end
-
---		-- update the recipe, cache, and start the crafter
---		autocrafterCache[minetest.hash_node_position(pos)] = nil
---		after_recipe_change(pos, inv)
---	end
---end
 
 minetest.register_node("tubelib_addons1:autocrafter", {
 	description = "Autocrafter",
 	drawtype = "normal",
 	tiles = {'tubelib_front.png', 'tubelib_addons1_autocrafter.png'},
-	groups = {snappy = 3, tubedevice = 1, tubedevice_receiver = 1},
-	tube = {insert_object = function(pos, node, stack, direction)
-			local meta = minetest.get_meta(pos)
-			local inv = meta:get_inventory()
-			local added = inv:add_item("src", stack)
-			after_inventory_change(pos)
-			return added
-		end,
-		can_insert = function(pos, node, stack, direction)
-			local meta = minetest.get_meta(pos)
-			local inv = meta:get_inventory()
-			return inv:room_for_item("src", stack)
-		end,
-		input_inventory = "dst",
-		connect_sides = {left = 1, right = 1, front = 1, back = 1, top = 1, bottom = 1}},
+	groups = {snappy = 3},
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		local number = tubelib.get_node_number(pos, "tubelib_addons1:autocrafter")
+		local number = tubelib.add_node(pos, "tubelib_addons1:autocrafter")
 		local inv = meta:get_inventory()
-		inv:set_size("src", 3*8)
+		inv:set_size("src", 2*8)
 		inv:set_size("recipe", 3*3)
-		inv:set_size("dst", 4*3)
+		inv:set_size("dst", 3*3)
 		inv:set_size("output", 1)
 		meta:set_string("number", number)
-		update_meta(meta, false)
+		meta:set_int("running", 0)
+		update_meta(meta, tubelib.STOPPED)
 	end,
-	on_receive_fields = function(pos, formname, fields, sender)
-		if minetest.is_protected(pos, sender:get_player_name()) then
-			return
-		end
-		--if not pipeworks.may_configure(pos, sender) then return end
-		local meta = minetest.get_meta(pos)
-		if fields.running ~= nil then
-			if fields.running == "false" then
-				update_meta(meta, false)
-				minetest.get_node_timer(pos):stop()
-			else
-				if update_meta(meta, true) then
-					start_crafter(pos)
-				end
-			end
-		end
-	end,
+	
+	on_receive_fields = on_receive_fields,
+	
 	can_dig = function(pos, player)
 		--upgrade_autocrafter(pos)
 		local meta = minetest.get_meta(pos)
 		local inv = meta:get_inventory()
 		return (inv:is_empty("src") and inv:is_empty("dst"))
 	end,
-	--after_place_node = pipeworks.scan_for_tube_objects,
-	--after_dig_node = function(pos)
-	--	pipeworks.scan_for_tube_objects(pos)
-	--end,
+	
 	on_destruct = function(pos)
 		autocrafterCache[minetest.hash_node_position(pos)] = nil
 		tubelib.remove_node(pos)
 	end,
-	allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-		if minetest.is_protected(pos, player:get_player_name()) then
-			return 0
-		end
-		local inv = minetest.get_meta(pos):get_inventory()
-		if listname == "recipe" then
-			stack:set_count(1)
-			inv:set_stack(listname, index, stack)
-			after_recipe_change(pos, inv)
-			return 0
-		elseif listname == "output" then
-			on_output_change(pos, inv, stack)
-			return 0
-		end
-		after_inventory_change(pos)
-		return stack:get_count()
-	end,
-	allow_metadata_inventory_take = function(pos, listname, index, stack, player)
-		if minetest.is_protected(pos, player:get_player_name()) then
-			return 0
-		end
---		upgrade_autocrafter(pos)
-		local inv = minetest.get_meta(pos):get_inventory()
-		if listname == "recipe" then
-			inv:set_stack(listname, index, ItemStack(""))
-			after_recipe_change(pos, inv)
-			return 0
-		elseif listname == "output" then
-			on_output_change(pos, inv, nil)
-			return 0
-		end
-		after_inventory_change(pos)
-		return stack:get_count()
-	end,
-	allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
-		if minetest.is_protected(pos, player:get_player_name()) then
-			return 0
-		end
-		local inv = minetest.get_meta(pos):get_inventory()
-		local stack = inv:get_stack(from_list, from_index)
+	
+	allow_metadata_inventory_put = allow_metadata_inventory_put,
+	allow_metadata_inventory_take = allow_metadata_inventory_take,
+	allow_metadata_inventory_move = allow_metadata_inventory_move,
+	on_timer = run_autocrafter,
+})
 
-		if to_list == "output" then
-			on_output_change(pos, inv, stack)
-			return 0
-		elseif from_list == "output" then
-			on_output_change(pos, inv, nil)
-			if to_list ~= "recipe" then
-				return 0
-			end -- else fall through to recipe list handling
-		end
-
-		if from_list == "recipe" or to_list == "recipe" then
-			if from_list == "recipe" then
-				inv:set_stack(from_list, from_index, ItemStack(""))
-			end
-			if to_list == "recipe" then
-				stack:set_count(1)
-				inv:set_stack(to_list, to_index, stack)
-			end
-			after_recipe_change(pos, inv)
-			return 0
-		end
-
-		after_inventory_change(pos)
-		return count
-	end,
+minetest.register_node("tubelib_addons1:autocrafter_active", {
+	description = "Autocrafter",
+	drawtype = "normal",
+	tiles = {
+		'tubelib_front.png', 
+		{
+			image = 'tubelib_addons1_autocrafter_active.png',
+			backface_culling = false,
+			animation = {
+				type = "vertical_frames",
+				aspect_w = 32,
+				aspect_h = 32,
+				length = 0.5,
+			},
+		},
+	},
+	groups = {crumbly=0, not_in_creative_inventory=1},
+	
+	on_receive_fields = on_receive_fields,
+	
+	allow_metadata_inventory_put = allow_metadata_inventory_put,
+	allow_metadata_inventory_take = allow_metadata_inventory_take,
+	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	on_timer = run_autocrafter,
 })
 
@@ -388,25 +438,17 @@ minetest.register_craft({
 })
 
 
-tubelib.register_node("tubelib_addons1:autocrafter", {}, {
-	on_pull_item = function(pos)
+tubelib.register_node("tubelib_addons1:autocrafter", {"tubelib_addons1:autocrafter_active"}, {
+	on_pull_item = function(pos, side)
 		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.get_item(inv, "dst")
+		return tubelib.get_item(meta, "dst")
 	end,
-	on_push_item = function(pos, item)
-		start_crafter(pos)
+	on_push_item = function(pos, side, item)
 		local meta = minetest.get_meta(pos)
-		local inv = meta:get_inventory()
-		return tubelib.put_item(inv, "src", item)
+		return tubelib.put_item(meta, "src", item)
 	end,
-	on_recv_message = function(pos, topic, payload)
-		if topic == "start" then
-			start_crafter(pos)
-		elseif topic == "stop" then
-			local meta = minetest.get_meta(pos)
-			update_meta(meta, false)
-			minetest.get_node_timer(pos):stop()
-		end
+	on_unpull_item = function(pos, side, item)
+		local meta = minetest.get_meta(pos)
+		return tubelib.put_item(meta, "src", item)
 	end,
 })	

@@ -97,6 +97,29 @@ local function stop_the_machine(pos)
 	end
 end
 
+local function signal_standby(pos)
+	local meta = minetest.get_meta(pos)
+	if meta:get_int("state") == tubelib.RUNNING then
+		meta:set_int("state", tubelib.STANDBY)
+		local number = meta:get_string("number")
+		meta:set_string("infotext", "Tubelib Distributor "..number..": standby")
+		local filter = minetest.deserialize(meta:get_string("filter"))
+		meta:set_string("formspec", distributor_formspec(tubelib.STANDBY, filter))
+	end
+end
+
+local function signal_error(pos)
+	local meta = minetest.get_meta(pos)
+	if meta:get_int("state") ~= tubelib.ERROR then
+		meta:set_int("state", tubelib.ERROR)
+		local number = meta:get_string("number")
+		meta:set_string("infotext", "Tubelib Distributor "..number..": error")
+		local filter = minetest.deserialize(meta:get_string("filter"))
+		meta:set_string("formspec", distributor_formspec(tubelib.ERROR, filter))
+	end
+end
+
+
 local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
 	local number = meta:get_string("number")
