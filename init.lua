@@ -15,6 +15,21 @@
 
 ]]--
 
+--------------------------- conversion to v0.03
+minetest.register_lbm({
+	label = "[Tubelib] Distributor update",
+	name = "tubelib_addons1:update",
+	nodenames = {"tubelib_addons1:harvester_base", "tubelib_addons1:quarry", "tubelib_addons1:quarry_active"},
+	run_at_every_load = false,
+	action = function(pos, node)
+		local meta = minetest.get_meta(pos)
+		local inv = meta:get_inventory()
+		inv:set_size('main', 16)
+		inv:set_size('fuel', 1)
+	end
+})
+
+
 dofile(minetest.get_modpath("tubelib_addons1") .. "/quarry.lua")
 dofile(minetest.get_modpath("tubelib_addons1") .. "/grinder.lua")
 dofile(minetest.get_modpath("tubelib_addons1") .. '/autocrafter.lua')

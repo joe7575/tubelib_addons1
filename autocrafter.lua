@@ -117,6 +117,7 @@ local function stop_crafter(pos)
 	local meta = minetest.get_meta(pos)
 	meta:set_int("running", 0)
 	meta:set_string("formspec",formspec(tubelib.STOPPED))
+	meta:set_string("infotext", "Tubelib Autocrafter "..number..": stopped")
 	node.name = "tubelib_addons1:autocrafter"
 	minetest.swap_node(pos, node)
 	minetest.get_node_timer(pos):stop()
@@ -129,7 +130,7 @@ local function goto_sleep(pos)
 	local number = meta:get_string("number")
 	meta:set_int("running", -1)
 	meta:set_string("formspec",formspec(tubelib.STANDBY))
-	meta:set_string("infotext", "unconfigured Autocrafter "..number..": unknown recipe")
+	meta:set_string("infotext", "Tubelib Autocrafter "..number..": standby")
 	node.name = "tubelib_addons1:autocrafter"
 	minetest.swap_node(pos, node)
 	minetest.get_node_timer(pos):start(craft_time*SLEEP_CNT_START_VAL)
@@ -206,7 +207,7 @@ local function after_recipe_change(pos, inventory)
 	local output_item = craft.output.item
 	local description, name = get_item_info(output_item)
 	local number = meta:get_string("number")
-	meta:set_string("infotext", string.format("'%s' Autocrafter "..number.."(%s)", description, name))
+	meta:set_string("infotext", string.format("'%s' Tubelib Autocrafter "..number.."(%s)", description, name))
 	inventory:set_stack("output", 1, output_item)
 end
 

@@ -613,6 +613,13 @@ tubelib.register_node("tubelib_addons1:harvester_base", {}, {
 		local meta = minetest.get_meta(pos)
 		return tubelib.get_item(meta, "main")
 	end,
+	on_push_item = function(pos, side, item)
+		if item:get_name() == "tubelib_addons1:biofuel" then
+			local meta = minetest.get_meta(pos)
+			return tubelib.put_item(meta, "fuel", item)
+		end
+		return false
+	end,
 	on_unpull_item = function(pos, side, item)
 		local meta = minetest.get_meta(pos)
 		return tubelib.put_item(meta, "main", item)

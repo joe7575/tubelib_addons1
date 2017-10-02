@@ -11,7 +11,7 @@
 	fermenter.lua
 	
 	The Fermenter converts 2 leave items of any kind into one Bio Gas item,
-	needed by the Remormer to produce Bio Fuel.
+	needed by the Reformer to produce Bio Fuel.
 
 ]]--
 
@@ -94,13 +94,21 @@ end
 local function convert_leaves_to_biogas(meta)
 	local inv = meta:get_inventory()
 	local biogas = ItemStack("tubelib_addons1:biogas")
-	local items = tubelib.get_num_items(meta, "src", 2)
-	if inv:room_for_item("dst", biogas) and items and leaves[items:get_name()] then
-		inv:add_item("dst", biogas)
-		return true
+	if inv:room_for_item("dst", biogas) then					-- enough output space?
+		local items = tubelib.get_num_items(meta, "src", 2)
+		if items then											-- input available?
+			if leaves[items:get_name()] then					-- valid input?
+				inv:add_item("dst", biogas)
+				return true
+			else
+				inv:add_item("src", items)
+				return nil  -- error
+			end
+		else
+			return false  -- standby
+		end
 	else
-		inv:add_item("src", items)
-		return false  -- error
+		return false  -- standby
 	end
 end
 
@@ -154,6 +162,11 @@ local function keep_running(pos, elapsed)
 			return start_the_machine(pos)
 		else
 			running = TICKS_TO_SLEEP
+		end
+	elseif res == false then
+		if running <= STOP_STATE then
+			local node = minetest.get_node(pos)
+			return goto_sleep(pos, node)
 		end
 	else
 		return goto_fault(pos)

@@ -8,6 +8,11 @@
 	LGPLv2.1+
 	See LICENSE.txt for more information
 
+	reformer.lua
+	
+	The Reformer converts 4 Bio Gas items into one Bio Fuel item,
+	needed by Harvester and Quarry.
+	
 ]]--
 
 local CYCLE_TIME = 6
@@ -78,14 +83,21 @@ end
 local function convert_biogas_to_biofuel(meta)
 	local inv = meta:get_inventory()
 	local biofuel = ItemStack("tubelib_addons1:biofuel")
-	local items = tubelib.get_num_items(meta, "src", 4)
-	if inv:room_for_item("dst", biofuel) and items and 
-					items:get_name() == "tubelib_addons1:biogas" then
-		inv:add_item("dst", biofuel)
-		return true
+	if inv:room_for_item("dst", biofuel) then						-- enough output space?
+		local items = tubelib.get_num_items(meta, "src", 4)
+		if items then												-- input available?
+			if items:get_name() == "tubelib_addons1:biogas" then	-- valid input?
+				inv:add_item("dst", biofuel)
+				return true
+			else
+				inv:add_item("src", items)
+				return nil  										-- error
+			end
+		else
+			return false  											-- standby
+		end
 	else
-		inv:add_item("src", items)
-		return false  -- error
+		return false  												-- standby
 	end
 end
 
@@ -139,6 +151,11 @@ local function keep_running(pos, elapsed)
 			return start_the_machine(pos)
 		else
 			running = TICKS_TO_SLEEP
+		end
+	elseif res == false then
+		if running <= STOP_STATE then
+			local node = minetest.get_node(pos)
+			return goto_sleep(pos, node)
 		end
 	else
 		return goto_fault(pos)
