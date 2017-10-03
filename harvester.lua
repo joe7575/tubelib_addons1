@@ -132,7 +132,11 @@ local function add_node(pos, block_name, owner)
 	if minetest.is_protected(pos, owner) then
 		return false
 	end
-	if DeletableNodes[minetest.get_node(pos).name] then
+	local node = minetest.get_node(pos)
+	if node == nil or node.name == "ignore" then
+		return true  -- ignore unloaded area
+	end
+	if DeletableNodes[node.name] then
 		minetest.remove_node(pos)
 		minetest.add_node(pos, {name=block_name})
 		return true
