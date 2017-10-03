@@ -50,6 +50,7 @@ local function allow_metadata_inventory_put(pos, listname, index, stack, player)
 	elseif listname == "dst" then
 		return 0
 	end
+	return 0
 end
 
 local function allow_metadata_inventory_move(pos, from_list, from_index, to_list, to_index, count, player)

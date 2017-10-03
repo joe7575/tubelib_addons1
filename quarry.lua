@@ -81,6 +81,7 @@ local function allow_metadata_inventory_put(pos, listname, index, stack, player)
 	elseif listname == "fuel" and stack:get_name() == "tubelib_addons1:biofuel" then
 		return stack:get_count()
 	end
+	return 0
 end
 
 local function allow_metadata_inventory_take(pos, listname, index, stack, player)
