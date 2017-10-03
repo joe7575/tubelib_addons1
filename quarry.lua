@@ -31,7 +31,7 @@ local Level2Idx = {[2]=1, [1]=2, [0]=3, [-1]=4, [-2]=5, [-3]=6,
 
 local function quarry_formspec(meta, state)
 	local depth = meta:get_int("max_levels") or 1
-	local start_level = meta:get_int("start_level") or 0
+	local start_level = meta:get_int("start_level") or 1
 	local endless = meta:get_int("endless") or 0
 	local fuel = meta:get_int("fuel") or 0
 	-- some recalculations
