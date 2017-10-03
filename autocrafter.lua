@@ -115,6 +115,7 @@ end
 local function stop_crafter(pos)
 	local node = minetest.get_node(pos)
 	local meta = minetest.get_meta(pos)
+	local number = meta:get_string("number") or ""
 	meta:set_int("running", 0)
 	meta:set_string("formspec",formspec(tubelib.STOPPED))
 	meta:set_string("infotext", "Tubelib Autocrafter "..number..": stopped")
@@ -127,7 +128,7 @@ end
 local function goto_sleep(pos)
 	local node = minetest.get_node(pos)
 	local meta = minetest.get_meta(pos)
-	local number = meta:get_string("number")
+	local number = meta:get_string("number") or ""
 	meta:set_int("running", -1)
 	meta:set_string("formspec",formspec(tubelib.STANDBY))
 	meta:set_string("infotext", "Tubelib Autocrafter "..number..": standby")
