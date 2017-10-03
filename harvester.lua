@@ -14,8 +14,8 @@
 	
 	The machine is able to harvest an square area of up to 41x41 blocks (radius = 20).
 	The base block has to be placed in the middle of the harvesting area.
-	The Harvester processes one block every 4 seconds and needs one item Bio Fuel
-	for 16 blocks.
+	The Harvester processes one block every 4 seconds.
+	It requires one item Bio Fuel per 16 blocks.
 
 ]]--
 

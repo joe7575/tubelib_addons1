@@ -1,2 +1,2 @@
-Quarry, Harvester and Grinder Blocks for the Minetest Tubelib.
+Tubelib Extension with Mining, Farming, and Crafting Blocks
 

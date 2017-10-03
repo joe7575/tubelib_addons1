@@ -10,12 +10,13 @@
 	
 	quarry.lua
 	
-	Quarry machine to dig stone and other ground blocks.
+	Quarry machine to dig stones and other ground blocks.
 	
 	The Quarry digs a hole 5x5 blocks large and up to 25 blocks deep.
-	It start at the given level (0 is same level as the quarry block,
-	1 is one level higher and so on)) and goes down the given depth number.
-	It digs one block every 4 seconds and needs one item Bio Fuel to dig 8 blocks.
+	It starts at the given level (0 is same level as the quarry block,
+	1 is one level higher and so on)) and goes down to the given depth number.
+	It digs one block every 4 seconds.
+	It requires one item Bio Fuel per 8 blocks.
 
 ]]--
 
