@@ -313,9 +313,11 @@ end
 -- Scan the space below the given position
 -- Return false if inventory is full
 local function harvest_field(pos, owner, inv)
-	local y_pos = pos.y - 1
-	while true do
+	local start_y_pos = pos.y - 1
+	local stop_y_pos = pos.y - MAX_HEIGHT
+	for y_pos = start_y_pos,stop_y_pos,-1 do
 		pos.y = y_pos
+		print(pos.y)
 		if minetest.is_protected(pos, owner) then
 			return true
 		end
@@ -330,10 +332,6 @@ local function harvest_field(pos, owner, inv)
 					return true	-- hit the ground
 				end
 			end
-		end
-		y_pos = y_pos - 1
-		if y_pos < (pos.y - MAX_HEIGHT) then	-- deep enough?
-			return true
 		end
 	end
 	return true
