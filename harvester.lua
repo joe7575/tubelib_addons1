@@ -317,7 +317,6 @@ local function harvest_field(pos, owner, inv)
 	local stop_y_pos = pos.y - MAX_HEIGHT
 	for y_pos = start_y_pos,stop_y_pos,-1 do
 		pos.y = y_pos
-		print(pos.y)
 		if minetest.is_protected(pos, owner) then
 			return true
 		end
