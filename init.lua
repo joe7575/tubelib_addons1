@@ -12,6 +12,7 @@
 	2017-09-08  v0.01  first version
 	2017-09-17  v0.02  harvester added
 	2017-10-02  v0.03  fermenter and reformer added
+	2017-10-07  v0.04  Ice, now and corals added to the Quarry
 
 ]]--
 

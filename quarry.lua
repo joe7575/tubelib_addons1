@@ -162,6 +162,13 @@ local ResultNodes = {
 	["stairs:stair_mossycobble"] = "stairs:stair_mossycobble",
 	["stairs:stair_desert_cobble"] = "stairs:stair_desert_cobble",
 	["default:cactus"] = "default:cactus",
+	["default:ice"] = "default:ice",
+	["default:snowblock"] = "default:snowblock",
+	["default:dirt_with_snow"] = "default:dirt",
+	["default:snow"] = "default:snow",
+	["default:coral_skeleton"] = "default:coral_skeleton",
+	["default:coral_orange"] = "default:coral_skeleton",
+	["default:coral_brown"] = "default:coral_skeleton",
 }
 
 
