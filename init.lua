@@ -31,9 +31,13 @@ minetest.register_lbm({
 })
 
 
-dofile(minetest.get_modpath("tubelib_addons1") .. "/quarry.lua")
-dofile(minetest.get_modpath("tubelib_addons1") .. "/grinder.lua")
-dofile(minetest.get_modpath("tubelib_addons1") .. '/autocrafter.lua')
-dofile(minetest.get_modpath("tubelib_addons1") .. '/harvester.lua')
-dofile(minetest.get_modpath("tubelib_addons1") .. '/fermenter.lua')
-dofile(minetest.get_modpath("tubelib_addons1") .. '/reformer.lua')
+if tubelib.version >= 0.06 then
+	dofile(minetest.get_modpath("tubelib_addons1") .. "/quarry.lua")
+	dofile(minetest.get_modpath("tubelib_addons1") .. "/grinder.lua")
+	dofile(minetest.get_modpath("tubelib_addons1") .. '/autocrafter.lua')
+	dofile(minetest.get_modpath("tubelib_addons1") .. '/harvester.lua')
+	dofile(minetest.get_modpath("tubelib_addons1") .. '/fermenter.lua')
+	dofile(minetest.get_modpath("tubelib_addons1") .. '/reformer.lua')
+else
+	print("[tubelib_addons1] Version 0.06+ of Tubelib Mod is required!")
+end
