@@ -26,6 +26,7 @@ local BURNING_TIME = 16
 local TICKS_TO_SLEEP = 5
 local STOP_STATE = 0
 local FAULT_STATE = -2
+local OFFSET = 5
 
 local Radius2Idx = {[4]=1 ,[6]=2, [8]=3, [10]=4, [12]=5, [14]=6, [16]=7, [18]=8, [20]=9}
 
@@ -314,7 +315,7 @@ end
 -- Return false if inventory is full
 local function harvest_field(pos, owner, inv)
 	local start_y_pos = pos.y - 1
-	local stop_y_pos = pos.y - MAX_HEIGHT
+	local stop_y_pos = pos.y - MAX_HEIGHT - OFFSET
 	for y_pos = start_y_pos,stop_y_pos,-1 do
 		pos.y = y_pos
 		if minetest.is_protected(pos, owner) then
