@@ -96,6 +96,10 @@ local function start_the_machine(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
+	if meta:get_int("max_levels") == 1 then
+		meta:set_int("idx", 1) -- restart for farming mode
+		meta:set_string("quarry_pos", nil)
+	end
 	meta:set_int("running", TICKS_TO_SLEEP)
 	meta:set_string("infotext", "Tubelib Quarry "..number..": running")
 	meta:set_string("formspec", quarry_formspec(meta, tubelib.RUNNING))
@@ -439,9 +443,9 @@ tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"
 	end,
 	
 	on_recv_message = function(pos, topic, payload)
-		if topic == "start" then
+		if topic == "start" or topic == "on" then
 			start_the_machine(pos)
-		elseif topic == "stop" then
+		elseif topic == "stop" or topic == "off" then
 			stop_the_machine(pos)
 		elseif topic == "state" then
 			local meta = minetest.get_meta(pos)
