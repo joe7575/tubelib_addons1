@@ -370,7 +370,7 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 	description = "Autocrafter",
 	drawtype = "normal",
 	tiles = {'tubelib_front.png', 'tubelib_addons1_autocrafter.png'},
-	groups = {snappy = 3},
+	
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
 		local number = tubelib.add_node(pos, "tubelib_addons1:autocrafter")
@@ -402,6 +402,12 @@ minetest.register_node("tubelib_addons1:autocrafter", {
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	on_timer = run_autocrafter,
+
+	paramtype = "light",
+	sunlight_propagates = true,
+	groups = {snappy=2, crumbly=2},
+	is_ground_content = false,
+	sounds = default.node_sound_wood_defaults(),
 })
 
 minetest.register_node("tubelib_addons1:autocrafter_active", {
@@ -420,7 +426,6 @@ minetest.register_node("tubelib_addons1:autocrafter_active", {
 			},
 		},
 	},
-	groups = {crumbly=0, not_in_creative_inventory=1},
 	
 	on_receive_fields = on_receive_fields,
 	
@@ -428,6 +433,12 @@ minetest.register_node("tubelib_addons1:autocrafter_active", {
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	on_timer = run_autocrafter,
+
+	paramtype = "light",
+	sunlight_propagates = true,
+	groups = {crumbly=0, not_in_creative_inventory=1},
+	is_ground_content = false,
+	sounds = default.node_sound_wood_defaults(),
 })
 
 minetest.register_craft({

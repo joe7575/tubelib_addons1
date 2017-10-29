@@ -16,12 +16,12 @@
 	It starts at the given level (0 is same level as the quarry block,
 	1 is one level higher and so on)) and goes down to the given depth number.
 	It digs one block every 4 seconds.
-	It requires one item Bio Fuel per 8 blocks.
+	It requires one item Bio Fuel per 16 blocks.
 
 ]]--
 
 local CYCLE_TIME = 4
-local BURNING_TIME = 8
+local BURNING_TIME = 16
 local TICKS_TO_SLEEP = 5
 local STOP_STATE = 0
 local FAULT_STATE = -2
@@ -96,10 +96,6 @@ local function start_the_machine(pos)
 	local meta = minetest.get_meta(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
-	if meta:get_int("max_levels") == 1 then
-		meta:set_int("idx", 1) -- restart for farming mode
-		meta:set_string("quarry_pos", nil)
-	end
 	meta:set_int("running", TICKS_TO_SLEEP)
 	meta:set_string("infotext", "Tubelib Quarry "..number..": running")
 	meta:set_string("formspec", quarry_formspec(meta, tubelib.RUNNING))
@@ -114,6 +110,8 @@ local function stop_the_machine(pos)
 	local node = minetest.get_node(pos)
 	local number = meta:get_string("number")
 	meta:set_int("running", STOP_STATE)
+	meta:set_int("idx", 1) -- restart from the beginning
+	meta:set_string("quarry_pos", nil)
 	meta:set_string("infotext", "Tubelib Quarry "..number..": stopped")
 	meta:set_string("formspec", quarry_formspec(meta, tubelib.STOPPED))
 	node.name = "tubelib_addons1:quarry"
@@ -375,9 +373,12 @@ minetest.register_node("tubelib_addons1:quarry", {
 	allow_metadata_inventory_put = allow_metadata_inventory_put,
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	groups = {cracky=1},
+	groups = {cracky=2, crumbly=2},
 	is_ground_content = false,
+	sounds = default.node_sound_wood_defaults(),
 })
 
 
@@ -410,9 +411,12 @@ minetest.register_node("tubelib_addons1:quarry_active", {
 	allow_metadata_inventory_put = allow_metadata_inventory_put,
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 	
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
 	groups = {crumbly=0, not_in_creative_inventory=1},
 	is_ground_content = false,
+	sounds = default.node_sound_wood_defaults(),
 })
 
 minetest.register_craft({
@@ -443,9 +447,9 @@ tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"
 	end,
 	
 	on_recv_message = function(pos, topic, payload)
-		if topic == "start" or topic == "on" then
+		if topic == "on" then
 			start_the_machine(pos)
-		elseif topic == "stop" or topic == "off" then
+		elseif topic == "off" then
 			stop_the_machine(pos)
 		elseif topic == "state" then
 			local meta = minetest.get_meta(pos)

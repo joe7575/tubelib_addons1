@@ -8,14 +8,14 @@ Quarry machine to dig stones and other ground blocks.
 The Quarry digs a hole 5x5 blocks large and up to 25 blocks deep.
 It starts at the given level (0 is same level as the quarry block,
 1 is one level higher and so on)) and goes down to the given depth number.
-It digs one block every 4 seconds. It requires one item Bio Fuel per 8 blocks.
+It digs one block every 4 seconds. It requires one item Bio Fuel per 16 blocks.
 
 ## Harvester
 Harvester machine to chop wood and leaves.  
 The machine is able to harvest an square area of up to 41x41 blocks (radius = 20).
 The base block has to be placed in the middle of the harvesting area.
 The Harvester processes one block every 4 seconds. 
-It requires one item Bio Fuel per 16 blocks.
+It requires one item Bio Fuel per 32 blocks.
 
 ## Grinder
 The Grinder grinds cobble stone to gravel and is needed for the Gravelsieve Mod, to extract further ores from gravel.

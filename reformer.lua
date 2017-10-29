@@ -236,9 +236,12 @@ minetest.register_node("tubelib_addons1:reformer", {
 	allow_metadata_inventory_move = allow_metadata_inventory_move,
 	allow_metadata_inventory_take = allow_metadata_inventory_take,
 
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	groups = {crumbly=2, cracky=2},
+	groups = {cracky=2, crumbly=2},
 	is_ground_content = false,
+	sounds = default.node_sound_metal_defaults(),
 })
 
 
@@ -254,8 +257,10 @@ minetest.register_node("tubelib_addons1:reformer_top", {
 		'tubelib_addons1_reformer2_top.png',
 	},
 
+	paramtype = "light",
+	sunlight_propagates = true,
 	paramtype2 = "facedir",
-	groups = {crumbly=2, cracky=2, not_in_creative_inventory=1},
+	groups = {crumbly=0, not_in_creative_inventory=1},
 	is_ground_content = false,
 })
 
@@ -289,9 +294,9 @@ tubelib.register_node("tubelib_addons1:reformer", {}, {
 		return tubelib.put_item(meta, "dst", item)
 	end,
 	on_recv_message = function(pos, topic, payload)
-		if topic == "start" then
+		if topic == "on" then
 			start_the_machine(pos)
-		elseif topic == "stop" then
+		elseif topic == "off" then
 			stop_the_machine(pos)
 		elseif topic == "state" then
 			local meta = minetest.get_meta(pos)
