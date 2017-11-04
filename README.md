@@ -1,21 +1,21 @@
-# Tubelib Extension with Mining, Farming, and Crafting Blocks \[tubelib_addons1\]
+# Tubelib Extension with Mining, Farming, and Crafting Nodes \[tubelib_addons1\]
 
-This Mod provides a Quarry, Harvester, Grinder, Autocrafter, Fermenter, and Reformer Block and thus allows
+This Mod provides Quarry, Harvester, Grinder, Autocrafter, Fermenter, and Reformer nodes and thus allows
 the automated mining, farming, and crafting.
 
 ## Quarry
-Quarry machine to dig stones and other ground blocks.  
-The Quarry digs a hole 5x5 blocks large and up to 25 blocks deep.
-It starts at the given level (0 is same level as the quarry block,
+Quarry machine to dig stones and other ground nodes.  
+The Quarry digs a hole 5x5 nodes large and up to 25 nodes deep.
+It starts at the given level (0 is same level as the quarry node,
 1 is one level higher and so on)) and goes down to the given depth number.
-It digs one block every 4 seconds. It requires one item Bio Fuel per 16 blocks.
+It digs one node every 4 seconds. It requires one item Bio Fuel per 16 nodes.
 
 ## Harvester
 Harvester machine to chop wood and leaves.  
-The machine is able to harvest an square area of up to 41x41 blocks (radius = 20).
-The base block has to be placed in the middle of the harvesting area.
-The Harvester processes one block every 4 seconds. 
-It requires one item Bio Fuel per 32 blocks.
+The machine is able to harvest an square area of up to 41x41 nodes (radius = 20).
+The base node has to be placed in the middle of the harvesting area.
+The Harvester processes one node every 4 seconds. 
+It requires one item Bio Fuel per 32 nodes.
 
 ## Grinder
 The Grinder grinds cobble stone to gravel and is needed for the Gravelsieve Mod, to extract further ores from gravel.

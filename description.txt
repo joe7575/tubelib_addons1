@@ -1,2 +1,2 @@
-Tubelib Extension with Mining, Farming, and Crafting Blocks
+Tubelib Extension with Mining, Farming, and Crafting nodes
 
