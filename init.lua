@@ -15,6 +15,7 @@
 	2017-10-07  v0.04  Ice, now and corals added to the Quarry
 	2017-10-24  v0.05  Harvester reworked and optimized
 	2017-10-29  v0.06  Adapted to Tubelib v0.07
+	2017-12-29  v0.07  Support for Farming Redo added
 
 ]]--
 
