@@ -81,6 +81,23 @@ local ResultNodes = {
 	["farming:cotton_8"] = "farming:cotton",
 	
 	["default:apple"] = "default:apple",
+
+	["farming:carrot_8"] = "farming:carrot 2",
+	["farming:potato_4"] = "farming:potato 3",
+	["farming:tomato_8"] = "farming:tomato 3",
+	["farming:cucumber_4"] = "farming:cucumber 2",
+	["farming:corn_8"] = "farming:corn 2",
+	["farming:coffee_5"] = "farming:coffee_beans 2",
+	["farming:melon_8"] = "farming:melon_slice 9",
+	["farming:pumpkin_8"] = "farming:pumpkin_slice 9",
+	["farming:raspberry_4"] = "farming:raspberries",
+	["farming:blueberry_4"] = "farming:blueberries",
+	["farming:rhubarb_3"] = "farming:rhubarb 2",
+	["farming:beanpole_5"] = "farming:beans 3",
+	["farming:grapes_8"] = "farming:grapes 3",
+	["farming:barley_7"] = "farming:barley",
+	["farming:chili_8"] = "farming:chili_pepper 2",
+	["farming:hemp_8"] = "farming:hemp_leaf",
 }
 
 -- Which sapling belongs to which tree
@@ -90,8 +107,24 @@ local SaplingList = {
 	["default:pine_tree"] = "default:pine_sapling",
 	["default:acacia_tree"] = "default:acacia_sapling",
 	["default:jungletree"] = "default:junglesapling",
-	["farming:wheat_8"] = "farming:seed_wheat",
-	["farming:cotton_8"] = "farming:seed_cotton",
+	["farming:wheat_8"] = "farming:wheat_1",
+	["farming:cotton_8"] = "farming:cotton_1",
+	["farming:carrot_8"] = "farming:carrot_1",
+	["farming:potato_4"] = "farming:potato_1",
+	["farming:tomato_8"] = "farming:tomato_1",
+	["farming:cucumber_4"] = "farming:cucumber_1",
+	["farming:corn_8"] = "farming:corn_1",
+	["farming:coffee_5"] = "farming:coffee_1",
+	["farming:melon_8"] = "farming:melon_1",
+	["farming:pumpkin_8"] = "farming:pumpkin_1",
+	["farming:raspberry_4"] = "farming:raspberry_1",
+	["farming:blueberry_4"] = "farming:blueberry_1",
+	["farming:rhubarb_3"] = "farming:rhubarb_1",
+	["farming:beanpole_5"] = "farming:beanpole_1",
+	["farming:grapes_8"] = "farming:grapes_1",
+	["farming:barley_7"] = "farming:barley_1",
+	["farming:chili_8"] = "farming:chili_1",
+	["farming:hemp_8"] = "farming:hemp_1",
 }
 
 local function formspec(this, state)
@@ -268,14 +301,19 @@ local function remove_or_replace_node(pos, inv, node)
 		if ResultNodes[next_node.name] == nil and next_node.name ~= "air" then  -- hit the ground?
 			if SaplingList[node.name] then
 				node.name = SaplingList[node.name]
-				-- For seed and saplings we have to simulate "on_place" and start the timer by hand
-				-- because the after_place_node function checks player rights and can't therefore
-				-- be used.
-				if node.name == "farming:seed_wheat" or node.name == "farming:seed_cotton" then
-					minetest.set_node(pos, {name=node.name, paramtype2 = "wallmounted", param2=1})
-					minetest.get_node_timer(pos):start(math.random(166, 286))
+				minetest.set_node(pos, {name=node.name, paramtype2 = "wallmounted", param2=1})
+				if node.name:sub(1,8) == "farming:" then
+					-- farming_redo installed?
+					if farming.mod == "redo" then
+						-- nothing to do
+					else
+						-- We have to simulate "on_place" and start the timer by hand
+						-- because the after_place_node function checks player rights and can't therefore
+						-- be used.
+						minetest.get_node_timer(pos):start(math.random(166,288))
+					end
 				else
-					minetest.set_node(pos, {name=node.name})
+					-- default trees
 					minetest.get_node_timer(pos):start(math.random(2400,4800))
 				end
 			end
