@@ -16,6 +16,7 @@
 	2017-10-24  v0.05  Harvester reworked and optimized
 	2017-10-29  v0.06  Adapted to Tubelib v0.07
 	2017-12-29  v0.07  Support for Farming Redo added
+	2018-01-01  v0.08  Harvester Copter removed
 
 ]]--
 

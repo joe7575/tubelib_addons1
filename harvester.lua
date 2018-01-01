@@ -10,12 +10,12 @@
 	
 	harvester.lua
 	
-	Harvester machine to chop wood and leaves.
+	Harvester machine to chop wood, leaves and harvest farming crops.
 	
 	The machine is able to harvest an square area of up to 33x33 blocks (radius = 16).
-	The base block has to be placed in the middle of the harvesting area.
-	The Harvester processes one block every 4 seconds.
-	It requires one item Bio Fuel per 32 blocks.
+	The base node has to be placed in the middle of the harvesting area.
+	The Harvester processes one node every 4 seconds.
+	It requires one item Bio Fuel per 32 nodes.
 
 ]]--
 
@@ -33,8 +33,8 @@ local OFFSET = 5
 
 local Radius2Idx = {[4]=1 ,[6]=2, [8]=3, [10]=4, [12]=5, [14]=6, [16]=7}
 
-local function gen_copter_steps()
-	-- Copter steps like a snail shell from inner to outer
+local function gen_working_steps()
+	-- Working steps like a snail shell from inner to outer
 	local t = {}
 	for steps = 1,MAX_DIAMETER,2 do
 		for idx = 1,steps do
@@ -54,7 +54,7 @@ local function gen_copter_steps()
 	return t
 end		
 
-local CopterSteps = gen_copter_steps()
+local WorkingSteps = gen_working_steps()
 
 
 -- valid harvesting nodes and the results for the inventory
@@ -100,7 +100,7 @@ local ResultNodes = {
 	["farming:hemp_8"] = "farming:hemp_leaf",
 }
 
--- Which sapling belongs to which tree
+-- Which sapling/seed belongs to which tree/crop
 local SaplingList = {
 	["default:tree"] = "default:sapling",
 	["default:aspen_tree"] = "default:aspen_sapling",
@@ -175,58 +175,18 @@ local function allow_metadata_inventory_take(pos, listname, index, stack, player
 	return stack:get_count()
 end
 
-local DeletableNodes = {
-	["air"] = true,
-	["tubelib_addons1:copter"] = true,
-	["tubelib_addons1:rotor1"] = true,
-	["tubelib_addons1:rotor2"] = true,
-	["tubelib_addons1:rotor3"] = true,
-	["tubelib_addons1:rotor4"] = true,
-}	
-
--- add copter node, considering rights and space
-local function add_node(pos, block_name, owner)
-	if minetest.is_protected(pos, owner) then
-		return false
-	end
-	local node = minetest.get_node(pos)
-	if node == nil or node.name == "ignore" then
-		return true  -- ignore unloaded area
-	end
-	if DeletableNodes[node.name] then
-		minetest.remove_node(pos)
-		minetest.add_node(pos, {name=block_name})
-		return true
-	end
-	return false
-end
-
--- remove copter node, considering rights and space
-local function remove_node(pos, block_name)
-	if minetest.get_node(pos).name ~= block_name then
-		return
-	end
-	minetest.remove_node(pos)
-end
-
 -- start on top of the base block
-local function copter_start_pos(pos)
-	local copter_pos = table.copy(pos)
-	copter_pos.y = copter_pos.y + MAX_HEIGHT
-	return copter_pos
+local function working_start_pos(pos)
+	local working_pos = table.copy(pos)
+	working_pos.y = working_pos.y + MAX_HEIGHT
+	return working_pos
 end
 
 local function get_next_pos(old_pos, idx)
-	local facedir = CopterSteps[idx]
+	local facedir = WorkingSteps[idx]
 	return vector.add(old_pos, core.facedir_to_dir(facedir))
 end
 
-local function reset_copter_position(pos, this)
-	remove_node(this.copter_pos, "tubelib_addons1:copter")
-	this.idx = 1
-	this.copter_pos = copter_start_pos(pos)
-end	
-	
 local function start_the_machine(pos, this, meta)
 	this.running = RUNNING
 	meta:set_string("infotext", "Tubelib Harvester "..this.number..": running")
@@ -237,7 +197,6 @@ local function start_the_machine(pos, this, meta)
 end
 
 local function stop_the_machine(pos, this, meta)
-	reset_copter_position(pos, this)
 	this.running = STOP_STATE
 	meta:set_string("infotext", "Tubelib Harvester "..this.number..": stopped")
 	meta:set_string("formspec", formspec(this, tubelib.STOPPED))
@@ -256,7 +215,6 @@ local function goto_standby(pos, this, meta)
 end
 
 local function goto_fault(pos, this, meta)
-	remove_node(this.copter_pos, "tubelib_addons1:copter")
 	this.running = FAULT_STATE
 	meta:set_string("infotext", "Tubelib Harvester "..this.number..": fault")
 	meta:set_string("formspec", formspec(this, tubelib.FAULT))
@@ -267,7 +225,7 @@ end
 
 -- Remove saplings lying arround
 local function remove_all_sapling_items(pos)
-	for _, object in pairs(minetest.get_objects_inside_radius(pos, 3)) do
+	for _, object in pairs(minetest.get_objects_inside_radius(pos, 4)) do
 		local lua_entity = object:get_luaentity()
 		if not object:is_player() and lua_entity and lua_entity.name == "__builtin:item" then
 			object:remove()
@@ -341,13 +299,13 @@ local function calc_new_pos(pos, this, meta)
 	if this.idx >= this.max then
 		if this.endless == 1 then
 			this.idx = 1
-			this.copter_pos = copter_start_pos(pos)
+			this.working_pos = working_start_pos(pos)
 			return true
 		else
 			return false
 		end
 	end
-	this.copter_pos	= get_next_pos(this.copter_pos, this.idx)
+	this.working_pos = get_next_pos(this.working_pos, this.idx)
 	return true
 end
 
@@ -356,7 +314,7 @@ end
 -- else return true
 local function harvest_field(this, meta)
 	local inv = meta:get_inventory()
-	local pos = table.copy(this.copter_pos)
+	local pos = table.copy(this.working_pos)
 	local start_y_pos = pos.y - 1
 	local stop_y_pos = pos.y - MAX_HEIGHT - OFFSET
 	if minetest.is_protected(pos, this.owner) then
@@ -393,19 +351,16 @@ local function keep_running(pos, elapsed)
 	local meta = minetest.get_meta(pos)
 	local this = minetest.deserialize(meta:get_string("this"))
 	
-	--print(this.copter_pos.x, this.copter_pos.z, this.running)
+	--print(this.working_pos.x, this.working_pos.z, this.running)
 	if not_standby(pos, this, meta) then
-		remove_node(this.copter_pos, "tubelib_addons1:copter")
 		if check_fuel(pos, this, meta) then
 			if calc_new_pos(pos, this, meta) then
 				if harvest_field(this, meta) then
 					meta:set_string("this", minetest.serialize(this))
-					if add_node(this.copter_pos, "tubelib_addons1:copter", this.owner) then
-						meta:set_string("infotext", 
-							"Tubelib Harvester "..this.number..
-							": running ("..this.idx.."/"..this.max..")")
-						return true
-					end
+					meta:set_string("infotext", 
+						"Tubelib Harvester "..this.number..
+						": running ("..this.idx.."/"..this.max..")")
+					return true
 				else
 					goto_standby(pos, this, meta)
 				end
@@ -476,7 +431,7 @@ minetest.register_node("tubelib_addons1:harvester_base", {
 		local this = {
 			number = number,
 			owner = placer:get_player_name(),
-			copter_pos = copter_start_pos(pos),
+			working_pos = working_start_pos(pos),
 			fuel = 0,
 			running = STOP_STATE,
 			endless = 0,
@@ -532,126 +487,6 @@ minetest.register_node("tubelib_addons1:harvester_base_active", {
 	sounds = default.node_sound_wood_defaults(),
 })
 
-
-minetest.register_node("tubelib_addons1:rotor1", {
-	description = "Harvester Copter",
-	tiles = {
-		"tubelib_addons1_rotor.png",
-		"tubelib_addons1_rotor.png^[transformR270]",
-		"tubelib_addons1_rotor_side.png",
-	},
-	
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -8/16, 7/16, -8/16,  8/16,  8/16, 8/16},
-		},
-	},
-	
-	light_source = 4,
-	paramtype = 'light',
-	groups = {cracky=2, not_in_creative_inventory=1},
-	is_ground_content = false,
-	drop = "",
-})
-
-minetest.register_node("tubelib_addons1:rotor2", {
-	description = "Harvester Copter",
-	tiles = {
-		"tubelib_addons1_rotor.png^[transformR270]",
-		"tubelib_addons1_rotor.png",
-		"tubelib_addons1_rotor_side.png",
-	},
-	
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -8/16, 7/16, -8/16,  8/16,  8/16, 8/16},
-		},
-	},
-	
-	light_source = 4,
-	paramtype = 'light',
-	groups = {cracky=2, not_in_creative_inventory=1},
-	is_ground_content = false,
-	drop = "",
-})
-
-minetest.register_node("tubelib_addons1:rotor3", {
-	description = "Harvester Copter",
-	tiles = {
-		"tubelib_addons1_rotor.png^[transformR180]",
-		"tubelib_addons1_rotor.png^[transformR90]",
-		"tubelib_addons1_rotor_side.png",
-	},
-	
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -8/16, 7/16, -8/16,  8/16,  8/16, 8/16},
-		},
-	},
-	
-	light_source = 4,
-	paramtype = 'light',
-	groups = {cracky=2, not_in_creative_inventory=1},
-	is_ground_content = false,
-	drop = "",
-})
-
-minetest.register_node("tubelib_addons1:rotor4", {
-	description = "Harvester Copter",
-	tiles = {
-		"tubelib_addons1_rotor.png^[transformR90]",
-		"tubelib_addons1_rotor.png^[transformR180]",
-		"tubelib_addons1_rotor_side.png",
-	},
-	
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -8/16, 7/16, -8/16,  8/16,  8/16, 8/16},
-		},
-	},
-	
-	light_source = 4,
-	paramtype = 'light',
-	groups = {cracky=2, not_in_creative_inventory=1},
-	is_ground_content = false,
-	drop = "",
-})
-
--- ground mounted booking machine
-minetest.register_node("tubelib_addons1:copter", {
-	description = "Harvester  Copter",
-	tiles = {
-		-- up, down, right, left, back, front
-		"tubelib_addons1_copter_bottom.png",
-		"tubelib_addons1_copter_bottom.png",
-		"tubelib_addons1_rotor_side.png",
-	},
-	
-	drawtype = "nodebox",
-	node_box = {
-		type = "fixed",
-		fixed = {
-			{ -8/16, 7/16, -8/16,  8/16,  8/16, 8/16},
-		},
-	},
-	
-	paramtype = "light",
-	sunlight_propagates = true,
-	light_source = 6,
-	groups = {cracky=2, not_in_creative_inventory=1},
-	is_ground_content = false,
-	drop = "",
-})
-
-
 minetest.register_craft({
 	output = "tubelib_addons1:harvester_base",
 	recipe = {
@@ -693,47 +528,20 @@ tubelib.register_node("tubelib_addons1:harvester_base", {}, {
 	end,
 })	
 
-local function remove_copter(pos, owner)
-	remove_node(pos, "tubelib_addons1:copter")
-	pos.x = pos.x + 1
-	pos.z = pos.z + 1
-	remove_node(pos, "tubelib_addons1:rotor1")
-	pos.z = pos.z - 2
-	remove_node(pos, "tubelib_addons1:rotor2")
-	pos.x = pos.x - 2
-	remove_node(pos, "tubelib_addons1:rotor3")
-	pos.z = pos.z + 2
-	remove_node(pos, "tubelib_addons1:rotor4")
-	pos.z = pos.z - 1
-	pos.x = pos.x + 1
-end
 
--- remove the remains of the copter
+-- update to v0.08
 minetest.register_lbm({
-	label = "[Tubelib] Node update",
+	label = "[tubelib_addons1] Harvester update",
 	name = "tubelib_addons1:update",
-	nodenames = {"tubelib_addons1:harvester_base"},
-	run_at_every_load = true,
+	nodenames = {"tubelib_addons1:harvester_base", "tubelib:harvester_base_active"},
+	run_at_every_load = false,
 	action = function(pos, node)
 		local meta = minetest.get_meta(pos)
-		local this = meta:get_string("this")
-		-- conversion to v0.05
-		if this == "" then
-			local this = {
-				number = meta:get_string("number"),
-				owner = meta:get_string("owner"),
-				copter_pos = copter_start_pos(pos),
-				running = STOP_STATE,
-				fuel = 0,
-				endless = 0,
-				radius = 6,
-				idx = 1,
-				max = (6+1+6) * (6+1+6)
-			}
+		local this = minetest.deserialize(meta:get_string("this"))
+		if this then
+			this.working_pos = this.copter_pos or working_start_pos(pos)
 			meta:set_string("this", minetest.serialize(this))
-		else
-			this = minetest.deserialize(this)
-			remove_copter(this.copter_pos, this.owner)
 		end
 	end
 })
+
