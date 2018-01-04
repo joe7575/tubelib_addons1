@@ -1,6 +1,6 @@
 # Tubelib Extension with Mining, Farming, and Crafting Nodes \[tubelib_addons1\]
 
-This Mod provides Quarry, Harvester, Grinder, Autocrafter, Fermenter, and Reformer nodes and thus allows
+This Mod provides Quarry, Harvester, Grinder, Autocrafter, Fermenter, Funnel, and Reformer nodes and thus allows
 the automated mining, farming, and crafting.
 
 ## Quarry
@@ -33,6 +33,11 @@ The Fermenter obtains one Bio Gas item every 4 seconds from 2 leave items.
 The Reformer is able to generate one Bio Fuel item every 6 seconds from 4 Bio Gas items.
 This Bio Fuel is needed by Quarry and Harvester.
 
+## Funnel
+The Funnel collects dropped items and stores them in its inventory. 
+Items are sucked up when they are dropped on top of the funnel node.
+You need a Tubelib Pusher to send items through tubes.
+
 
 Browse on: ![GitHub](https://github.com/joe7575/tubelib_addons1)
 
@@ -43,7 +48,7 @@ Download: ![GitHub](https://github.com/joe7575/tubelib_addons1/archive/master.zi
 tubelib, default  
 
 # License
-Copyright (C) 2017 Joachim Stolberg  
+Copyright (C) 2017,2018 Joachim Stolberg  
 Code: Licensed under the GNU LGPL version 2.1 or later. See LICENSE.txt and http://www.gnu.org/licenses/lgpl-2.1.txt  
 The Autocrafter is derived from Pipeworks: Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>  WTFPL  
 Textures: CC0

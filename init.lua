@@ -3,7 +3,7 @@
 	Tubelib Addons 1
 	================
 
-	Copyright (C) 2017 Joachim Stolberg
+	Copyright (C) 2017,2018 Joachim Stolberg
 
 	LGPLv2.1+
 	See LICENSE.txt for more information
@@ -17,6 +17,7 @@
 	2017-10-29  v0.06  Adapted to Tubelib v0.07
 	2017-12-29  v0.07  Support for Farming Redo added
 	2018-01-01  v0.08  Harvester Copter removed
+	2018-01-04  v0.09  Funnel added
 
 ]]--
 
@@ -27,6 +28,7 @@ if tubelib.version >= 0.07 then
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/harvester.lua')
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/fermenter.lua')
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/reformer.lua')
+	dofile(minetest.get_modpath("tubelib_addons1") .. '/funnel.lua')
 else
 	print("[tubelib_addons1] Version 0.07+ of Tubelib Mod is required!")
 end
