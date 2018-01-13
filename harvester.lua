@@ -189,6 +189,7 @@ end
 
 local function start_the_machine(pos, this, meta)
 	this.running = RUNNING
+	this.idx = 1
 	meta:set_string("infotext", "Tubelib Harvester "..this.number..": running")
 	meta:set_string("formspec", formspec(this, tubelib.RUNNING))
 	minetest.get_node_timer(pos):start(CYCLE_TIME)

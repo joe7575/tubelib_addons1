@@ -48,7 +48,7 @@ local function scan_for_objects(pos, elapsed)
 		local lua_entity = object:get_luaentity()
 		if not object:is_player() and lua_entity and lua_entity.name == "__builtin:item" then
 			local obj_pos = object:getpos()
-			if lua_entity.itemstring ~= "" and ((obj_pos.y - pos.y) >= 0.5) then
+			if lua_entity.itemstring ~= "" and ((obj_pos.y - pos.y) >= 0.4) then
 				if tubelib.put_item(meta, "main", lua_entity.itemstring) then
 					lua_entity.itemstring = ""
 					object:remove()
@@ -94,8 +94,6 @@ minetest.register_node("tubelib_addons1:funnel", {
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
 		local facedir = minetest.dir_to_facedir(placer:get_look_dir(), false)
-		meta:set_int("facedir", facedir)
-		meta:set_string("owner", placer:get_player_name())
 		meta:set_string("formspec", formspec())
 		minetest.get_node_timer(pos):start(1)
 	end,
