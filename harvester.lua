@@ -189,7 +189,8 @@ end
 
 local function start_the_machine(pos, this, meta)
 	this.running = RUNNING
-	this.idx = 1
+	this.idx = 0
+	this.working_pos = working_start_pos(pos)
 	meta:set_string("infotext", "Tubelib Harvester "..this.number..": running")
 	meta:set_string("formspec", formspec(this, tubelib.RUNNING))
 	minetest.get_node_timer(pos):start(CYCLE_TIME)
@@ -299,7 +300,7 @@ local function calc_new_pos(pos, this, meta)
 	this.idx = this.idx + 1
 	if this.idx >= this.max then
 		if this.endless == 1 then
-			this.idx = 1
+			this.idx = 0
 			this.working_pos = working_start_pos(pos)
 			return true
 		else
