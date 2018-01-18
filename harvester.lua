@@ -15,7 +15,7 @@
 	The machine is able to harvest an square area of up to 33x33 blocks (radius = 16).
 	The base node has to be placed in the middle of the harvesting area.
 	The Harvester processes one node every 4 seconds.
-	It requires one item Bio Fuel per 32 nodes.
+	It requires one item Bio Fuel per 24 nodes.
 
 ]]--
 
@@ -23,7 +23,7 @@
 local CYCLE_TIME = 4
 local MAX_HEIGHT = 18
 local MAX_DIAMETER = 33
-local BURNING_TIME = 32
+local BURNING_TIME = 24
 local TICKS_TO_SLEEP = 10
 local STOP_STATE = 0
 local RUNNING = 1
