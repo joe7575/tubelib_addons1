@@ -18,6 +18,7 @@
 	2017-12-29  v0.07  Support for Farming Redo added
 	2018-01-01  v0.08  Harvester Copter removed
 	2018-01-04  v0.09  Funnel added
+  2018-01-28  v0.10  command 'fuel' added for Quarry and Harvester
 
 ]]--
 

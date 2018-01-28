@@ -455,6 +455,9 @@ tubelib.register_node("tubelib_addons1:quarry", {"tubelib_addons1:quarry_active"
 			local meta = minetest.get_meta(pos)
 			local running = meta:get_int("running")
 			return tubelib.statestring(running)
+		elseif topic == "fuel" then
+			local meta = minetest.get_meta(pos)
+			return tubelib.fuelstate(meta, "fuel")
 		else
 			return "unsupported"
 		end

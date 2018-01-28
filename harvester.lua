@@ -524,6 +524,9 @@ tubelib.register_node("tubelib_addons1:harvester_base", {}, {
 			stop_the_machine(pos, this, meta)
 		elseif topic == "state" then
 			return tubelib.statestring(this.running)
+		elseif topic == "fuel" then
+			local meta = minetest.get_meta(pos)
+			return tubelib.fuelstate(meta, "fuel")
 		else
 			return "unsupported"
 		end
