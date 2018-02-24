@@ -30,6 +30,7 @@ if tubelib.version >= 0.07 then
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/fermenter.lua')
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/reformer.lua')
 	dofile(minetest.get_modpath("tubelib_addons1") .. '/funnel.lua')
+	dofile(minetest.get_modpath("tubelib_addons1") .. "/pusher_fast.lua")
 else
 	print("[tubelib_addons1] Version 0.07+ of Tubelib Mod is required!")
 end
