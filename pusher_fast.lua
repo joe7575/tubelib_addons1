@@ -88,12 +88,6 @@ local function keep_running(pos, elapsed)
 			local node = minetest.get_node(pos)
 			return goto_blocked(pos, node)
 		end
-		if tubelib.push_items(pos, "R", items, player_name) == false then -- <<=== tubelib
-			-- place item back
-			tubelib.unpull_items(pos, "L", items, player_name) -- <<=== tubelib
-			local node = minetest.get_node(pos)
-			return goto_blocked(pos, node)
-		end
 		if running <= 0 then
 			local node = minetest.get_node(pos)
 			return switch_on(pos, node)
@@ -126,7 +120,7 @@ minetest.register_node("tubelib_addons1:pusher_fast", {
 	after_place_node = function(pos, placer)
 		local meta = minetest.get_meta(pos)
 		meta:set_string("player_name", placer:get_player_name())
-		local number = tubelib.add_node(pos, "tubelib:pusher") -- <<=== tubelib
+		local number = tubelib.add_node(pos, "tubelib_addons1:pusher_fast")
 		meta:set_string("number", number)
 		meta:set_string("infotext", "Pusher "..number..": stopped")
 	end,
@@ -138,7 +132,7 @@ minetest.register_node("tubelib_addons1:pusher_fast", {
 	end,
 
 	after_dig_node = function(pos)
-		tubelib.remove_node(pos) -- <<=== tubelib
+		tubelib.remove_node(pos)
 	end,
 	
 	on_timer = keep_running,
