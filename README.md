@@ -1,3 +1,7 @@
+:boom: This Mod is now part of the Modpack ![TechPack](https://github.com/joe7575/techpack).
+This repository here is no longer maintained. :boom:
+
+```
 # Tubelib Extension with Mining, Farming, and Crafting Nodes \[tubelib_addons1\]
 
 This Mod provides Quarry, Harvester, Grinder, Autocrafter, Fermenter, Funnel, and Reformer nodes and thus allows
@@ -52,4 +56,4 @@ Copyright (C) 2017,2018 Joachim Stolberg
 Code: Licensed under the GNU LGPL version 2.1 or later. See LICENSE.txt and http://www.gnu.org/licenses/lgpl-2.1.txt  
 The Autocrafter is derived from Pipeworks: Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>  WTFPL  
 Textures: CC0
-
+```
